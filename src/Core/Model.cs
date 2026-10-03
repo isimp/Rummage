@@ -60,6 +60,27 @@ internal enum Reach
 
     /// <summary>Nothing can save a change to the chest from here, so it is left alone.</summary>
     Closed,
+
+    /// <summary>
+    /// The chest is in reach but AzuCraftyBoxes does not let the player use it; it is only read
+    /// to say why something is missing.
+    /// </summary>
+    Barred,
+}
+
+/// <summary>Why a chest in reach may not be used.</summary>
+internal enum Bar
+{
+    None,
+
+    /// <summary>Someone else has it open, or is pulling the cart it is on.</summary>
+    InUse,
+
+    /// <summary>Someone else's private chest; what it holds is not told.</summary>
+    Private,
+
+    /// <summary>Any other reason: a ward, a seal, a setting of AzuCraftyBoxes.</summary>
+    Locked,
 }
 
 /// <summary>A chest within reach and what is in it.</summary>
@@ -67,8 +88,9 @@ internal sealed class Source
 {
     private readonly Func<string, bool> _mayTake;
 
-    public Source(int id, float distance, Reach reach, IReadOnlyList<ItemStack> stacks, Func<string, bool> mayTake)
+    public Source(int id, float distance, Reach reach, IReadOnlyList<ItemStack> stacks, Func<string, bool> mayTake, Bar bar = Bar.None)
     {
+        Bar = bar;
         Id = id;
         Distance = distance;
         Reach = reach;
@@ -81,6 +103,9 @@ internal sealed class Source
     public float Distance { get; }
 
     public Reach Reach { get; }
+
+    /// <summary>For a barred chest, why.</summary>
+    public Bar Bar { get; }
 
     public IReadOnlyList<ItemStack> Stacks { get; }
 
@@ -220,6 +245,15 @@ internal sealed class Outcome
 
     /// <summary>Units in chests nothing can save a change to from here.</summary>
     public int Unreachable { get; internal set; }
+
+    /// <summary>Units in chests someone else has open.</summary>
+    public int InUse { get; internal set; }
+
+    /// <summary>Units in someone else's private chests, never told to the player.</summary>
+    public int InPrivate { get; internal set; }
+
+    /// <summary>Units in chests the player may not take from for any other reason.</summary>
+    public int Locked { get; internal set; }
 
     /// <summary>Whether the inventory ran out of room before the grab was done.</summary>
     public bool OutOfRoom { get; internal set; }

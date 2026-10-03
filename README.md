@@ -16,11 +16,11 @@ In the search box, type part of a name and the best matches come first. The arro
 
 Rummage uses the chests AzuCraftyBoxes lets you craft from, within its range, and follows its rules for what may leave each chest. With its *Leave One Item* setting on, every chest keeps one of each item it holds, so storage mods that sort by what a chest already holds keep working. Chests you may not open, chests someone else has open and chests sealed by other mods are left alone.
 
-What Rummage takes goes into your inventory only where it fits. Afterwards a few lines in the corner say what was taken and why anything is missing, and the chests it took from light up.
+What Rummage takes goes into your inventory only where it fits. Afterwards a few lines in the corner say what was taken and why anything is missing: kept back by *Leave One Item*, kept in by chest rules, in a chest someone has open, in someone's private chest (without saying how much), in a chest you may not take from, or not there at all. The chests it took from light up.
 
 ## Multiplayer
 
-Each take goes through the same step as dragging an item out of a chest by hand. A chest another player's game looks after is used only when MultiUserChest is installed, which then asks that game for the items, the same way it does for a drag. Without MultiUserChest such chests are left alone. Rummage itself is only needed by the players who use it.
+Each take goes through the same step as dragging an item out of a chest by hand. A chest another player's game looks after is used only when MultiUserChest is installed, which then asks that game for the items, the same way it does for a drag. Those items are reported as asked for, and once that game has answered, a second line says what arrived, or that it was turned down or never answered. Without MultiUserChest such chests are left alone. Rummage itself is only needed by the players who use it.
 
 ## Settings
 

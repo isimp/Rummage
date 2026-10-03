@@ -52,6 +52,48 @@ internal sealed class Scene
     }
 
     /// <summary>
+    /// Adds the chests in reach that AzuCraftyBoxes does not let the player use, read only to
+    /// say why something is missing: one someone else has open or a cart someone pulls, someone
+    /// else's private chest, or one kept out for another reason (a ward, a seal, a setting).
+    /// Only chests players built count, as AzuCraftyBoxes counts them.
+    /// </summary>
+    public void AddBarred(Player player)
+    {
+        var listed = new HashSet<Container>(Chests.Values);
+        var seen = new HashSet<Container>();
+        var here = player.transform.position;
+        foreach (var collider in Physics.OverlapSphere(here, CraftyLink.Range))
+        {
+            var chest = collider ? collider.GetComponentInParent<Container>() : null;
+            if (!chest || !seen.Add(chest) || listed.Contains(chest) || (CraftyLink.OnlyChests != null && !CraftyLink.OnlyChests(chest)))
+            {
+                continue;
+            }
+
+            var piece = chest.GetComponentInParent<Piece>();
+            var view = View(chest);
+            var inventory = chest.GetInventory();
+            if (!piece || piece.GetCreator() == 0 || inventory == null || !view || !view.IsValid())
+            {
+                continue;
+            }
+
+            Sources.Add(new Source(1000 + Sources.Count, Vector3.Distance(here, chest.transform.position), Reach.Barred,
+                Stacks(inventory), mayTake: null, BarOf(chest, piece, view, player)));
+        }
+    }
+
+    private static Bar BarOf(Container chest, Piece piece, ZNetView view, Player player)
+    {
+        if ((view.GetZDO().GetInt(ZDOVars.s_inUse) == 1 && !chest.IsInUse()) || (chest.m_wagon && chest.m_wagon.InUse()))
+        {
+            return Bar.InUse;
+        }
+
+        return chest.m_privacy == Container.PrivacySetting.Private && piece.GetCreator() != player.GetPlayerID() ? Bar.Private : Bar.Locked;
+    }
+
+    /// <summary>
     /// A chest this game holds saves what changes in it. One another game holds is used only
     /// through MultiUserChest, which asks that game; without it the chest is left alone.
     /// </summary>

@@ -73,10 +73,20 @@ internal static class Planner
             return 0;
         }
 
-        if (chest.Reach == Reach.Closed)
+        switch (chest.Reach)
         {
-            outcome.Unreachable += held;
-            return 0;
+            case Reach.Closed:
+                outcome.Unreachable += held;
+                return 0;
+            case Reach.Barred when chest.Bar == Bar.InUse:
+                outcome.InUse += held;
+                return 0;
+            case Reach.Barred when chest.Bar == Bar.Private:
+                outcome.InPrivate += held;
+                return 0;
+            case Reach.Barred:
+                outcome.Locked += held;
+                return 0;
         }
 
         var allowed = stacks.Where(s => chest.MayTake(s.Prefab)).ToList();

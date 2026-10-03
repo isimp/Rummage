@@ -48,7 +48,17 @@ internal sealed class Site
     /// <summary>A private chest with resin and wood, which AzuCraftyBoxes' default rules keep closed.</summary>
     public Container Private { get; private set; }
 
-    public IEnumerable<Container> Sources => new[] { Main, Second, Private }.Where(c => c);
+    /// <summary>Someone else's private chest with resin and wood, which AzuCraftyBoxes does not list.</summary>
+    public Container Foreign { get; private set; }
+
+    /// <summary>A player id nobody has, for chests that are someone else's.</summary>
+    public const long Nobody = 0x5EED_0000_0001L;
+
+    /// <summary>The test chests AzuCraftyBoxes should list.</summary>
+    public IEnumerable<Container> Listed => new[] { Main, Second, Private }.Where(c => c);
+
+    /// <summary>Every test chest; what the test counts as made or lost is counted over these.</summary>
+    public IEnumerable<Container> Sources => new[] { Main, Second, Private, Foreign }.Where(c => c);
 
     public Inventory Bag => _player.GetInventory();
 
@@ -60,6 +70,7 @@ internal sealed class Site
         Main = Place("piece_chest_wood");
         Second = Place("piece_chest_wood");
         Private = Place("piece_chest_private");
+        Foreign = Place("piece_chest_private", Nobody);
         Refill();
         SetBelongingsAside();
     }
@@ -70,6 +81,7 @@ internal sealed class Site
         Fill(Main, (Wood, 50), (Stone, 20), (Arrows, 100), (Arrows, 100));
         Fill(Second, (Wood, 50));
         Fill(Private, (Resin, 20), (Wood, 10));
+        Fill(Foreign, (Resin, 20), (Wood, 10));
     }
 
     /// <summary>Takes everything the test put into the inventory back out, and kept stacks back to their size.</summary>
@@ -238,7 +250,7 @@ internal sealed class Site
     }
 
     /// <summary>Builds a chest a few steps in front of the player, on what is underfoot, as the player's own.</summary>
-    private Container Place(string prefab)
+    private Container Place(string prefab, long creator = 0)
     {
         var forward = _player.transform.forward;
         forward.y = 0f;
@@ -255,8 +267,9 @@ internal sealed class Site
         var built = UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab(prefab), at, Quaternion.LookRotation(-forward));
         var chest = built.GetComponentInChildren<Container>();
         var zdo = Scene.View(chest).GetZDO();
-        zdo.Set(ZDOVars.s_creator, _player.GetPlayerID());
-        CreatorOf(built.GetComponent<Piece>()) = _player.GetPlayerID();
+        long owner = creator != 0 ? creator : _player.GetPlayerID();
+        zdo.Set(ZDOVars.s_creator, owner);
+        CreatorOf(built.GetComponent<Piece>()) = owner;
         zdo.Set(StoringPaused, true);
         return chest;
     }

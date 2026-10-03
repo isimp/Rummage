@@ -33,6 +33,9 @@ internal static class CraftyLink
     /// <summary>Whether AzuCraftyBoxes was found and understood; without it Rummage does nothing.</summary>
     public static bool Ready { get; private set; }
 
+    /// <summary>What the player is told when the key is pressed and AzuCraftyBoxes is not there to be used.</summary>
+    public static string Problem { get; private set; } = "Rummage needs AzuCraftyBoxes, which is not installed";
+
     public static bool LeaveOne => string.Equals(_leaveOne?.BoxedValue?.ToString(), "On", StringComparison.Ordinal);
 
     public static float Range => _range?.BoxedValue is float range ? range : 20f;
@@ -65,6 +68,11 @@ internal static class CraftyLink
         catch (Exception e)
         {
             Plugin.Log.LogError($"AzuCraftyBoxes {info.Metadata.Version} could not be read ({e.GetType().Name}: {e.Message}), so Rummage has no chests to search.");
+        }
+
+        if (!Ready)
+        {
+            Problem = $"Rummage could not read AzuCraftyBoxes {info.Metadata.Version}; see the log";
         }
 
         if (!Ready && _nearby == null)

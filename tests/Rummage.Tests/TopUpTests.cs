@@ -117,8 +117,9 @@ public class TopUpTests
             [Chest(1, 5, Reach.Routed, Stack(Arrows, 30, maxStack: 100)), Chest(2, 6, Stack(Arrows, 100, maxStack: 100))],
             Inventory(held), false);
 
-        var lines = Report.Lines("Fire arrow", plan, new System.Collections.Generic.Dictionary<string, int> { [Arrows] = 30 }, 0, n => "Fire arrow");
+        var asked = new System.Collections.Generic.Dictionary<string, int> { [Arrows] = 30 };
+        var lines = Report.Lines("Fire arrow", plan, new Done(new System.Collections.Generic.Dictionary<string, int>(), asked, 0, 0), n => "Fire arrow", canRoute: true);
 
-        Assert.Equal(["Fire arrow: took 30 Fire arrow", "60 Fire arrow short: the rest once the other chest has answered; press again"], lines);
+        Assert.Equal(["Fire arrow: asked another player's chest for 30 Fire arrow", "60 Fire arrow short: the rest once the other chest has answered; press again"], lines);
     }
 }

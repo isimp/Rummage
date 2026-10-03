@@ -60,7 +60,7 @@ public sealed class Plugin : BaseUnityPlugin
     {
         _grabber.Tick(Time.time);
 
-        if (Palette.IsOpen || !CraftyLink.Ready || !Input.GetKeyDown(_key.Value) || Held(KeyCode.LeftAlt, KeyCode.RightAlt, KeyCode.AltGr))
+        if (Palette.IsOpen || !Input.GetKeyDown(_key.Value) || Held(KeyCode.LeftAlt, KeyCode.RightAlt, KeyCode.AltGr))
         {
             return;
         }
@@ -68,6 +68,12 @@ public sealed class Plugin : BaseUnityPlugin
         var player = Player.m_localPlayer;
         if (!Guard.MayAct(player))
         {
+            return;
+        }
+
+        if (!CraftyLink.Ready)
+        {
+            player.Message(MessageHud.MessageType.TopLeft, CraftyLink.Problem);
             return;
         }
 

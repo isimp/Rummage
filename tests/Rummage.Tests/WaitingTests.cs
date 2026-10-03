@@ -41,10 +41,10 @@ public class WaitingTests
         var waiting = new Waiting(10);
         waiting.Start([(0, 1), (2, 1)], now: 0);
 
-        int answered = waiting.Check(slot => false, now: 1);
+        var answered = waiting.Check(slot => false, now: 1);
 
         Assert.False(waiting.Busy);
-        Assert.Equal(2, answered);
+        Assert.Equal([(0, 1), (2, 1)], answered.OrderBy(s => s.X).ToArray());
         Assert.Empty(waiting.Unanswered);
     }
 

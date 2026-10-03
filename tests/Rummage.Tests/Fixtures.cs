@@ -35,6 +35,10 @@ internal static class Fixtures
     public static Source Chest(int id, float distance, Func<string, bool> mayTake, params ItemStack[] stacks)
         => new(id, distance, Reach.Owned, stacks, mayTake);
 
+    /// <summary>A chest in reach that Rummage may not use, for the reason given.</summary>
+    public static Source Barred(int id, float distance, Bar bar, params ItemStack[] stacks)
+        => new(id, distance, Reach.Barred, stacks, mayTake: null, bar);
+
     /// <summary>An empty inventory of the game's usual size, unless told otherwise.</summary>
     public static Bag Inventory(params ItemStack[] stacks) => new(8, 4, stacks, isUsable: null);
 

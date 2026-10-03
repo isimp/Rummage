@@ -13,7 +13,7 @@ internal static class Stock
         var stock = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var chest in sources)
         {
-            if (chest.Reach == Reach.Closed)
+            if (chest.Reach is Reach.Closed or Reach.Barred)
             {
                 continue;
             }

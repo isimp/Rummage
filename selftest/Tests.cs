@@ -111,9 +111,15 @@ internal sealed class Tests
         if (built)
         {
             CraftyLink.OnlyChests = chest => _site.Sources.Contains(chest);
-            yield return Until(() => _site.Sources.All(c => CraftyLink.NearbyChests(_player).Contains(c)), 6f);
-            built = _site.Sources.All(c => CraftyLink.NearbyChests(_player).Contains(c));
-            _checks.Check(built, "AzuCraftyBoxes lists the test chests", "it did not within 6 seconds");
+            yield return Until(AllListed, 6f);
+            _checks.Check(AllListed(), "AzuCraftyBoxes lists the test chests", "it did not within 6 seconds");
+            if (!AllListed())
+            {
+                ExplainUnlisted();
+                yield return Until(AllListed, 2f);
+                built = AllListed();
+                _checks.Check(built, "the test chests are listed once handed to AzuCraftyBoxes' own API");
+            }
         }
 
         if (built)
@@ -121,6 +127,7 @@ internal sealed class Tests
             yield return Part("a build piece placed with the hammer, pressed twice", HammerPiece());
             yield return Part("Leave One Item", LeaveOne());
             yield return Part("chest rules", ChestRules());
+            yield return Part("chests that may not be used", Barred());
             yield return Part("a full inventory with one part stack", FullInventory());
             yield return Part("a recipe in the crafting tab, pressed twice", Recipe());
             yield return Part("filling a stack", TopUp());
@@ -199,7 +206,7 @@ internal sealed class Tests
 
         if (CraftyLink.LeaveOne)
         {
-            _checks.Check(Grabber.LastLines.Any(l => l.Contains("kept back, one in every chest")), "the report says what was kept back", string.Join(" | ", Grabber.LastLines));
+            _checks.Check(Grabber.LastLines.Any(l => l.Contains("kept back by Leave One Item")), "the report says what was kept back", string.Join(" | ", Grabber.LastLines));
         }
     }
 
@@ -317,8 +324,7 @@ internal sealed class Tests
 
         CraftyLink.OnlyChests = chest => chest == _site.Main;
         var view = Scene.View(_site.Main);
-        long nobody = 0x5EED_0000_0001L;
-        view.GetZDO().SetOwner(nobody);
+        view.GetZDO().SetOwner(Site.Nobody);
         _checks.Check(Scene.ReachOf(_site.Main, view) == Reach.Routed, "a chest another game holds goes through MultiUserChest");
 
         var before = Snapshot();
@@ -326,8 +332,10 @@ internal sealed class Tests
         _checks.Check(Site.Count(_site.Main.GetInventory(), Site.Wood) == 50, "the chest is not changed in this game");
         _checks.Check(Site.Count(_site.Bag, Site.Wood) == 0, "nothing arrives without an answer");
         _checks.Check(Grabber.Busy, "the next grab waits for the answer");
+        _checks.Check(Grabber.LastLines.Count > 0 && Grabber.LastLines[0].Contains("asked another player's chest for 5 "), "the report says it was asked for, not taken", string.Join(" | ", Grabber.LastLines));
         yield return Idle(15f);
-        _checks.Check(!Grabber.Busy && Grabber.LastUnanswered > 0, "the wait ends after its timeout and says so");
+        _checks.Check(!Grabber.Busy && Grabber.LastUnanswered > 0, "the wait ends after its timeout");
+        _checks.Check(Grabber.LastArrivals.Any(l => l.Contains("did not come: the other chest's game did not answer")), "the player is told it did not come", string.Join(" | ", Grabber.LastArrivals));
         Conserved(before);
 
         ReleaseMultiUserChestHold();
@@ -362,6 +370,7 @@ internal sealed class Tests
         yield return Idle(15f);
         _checks.Check(Grabber.LastUnanswered == 0, "their game answered");
         _checks.Check(Site.Count(_site.Bag, Site.Wood) == 5, "5 wood arrived", Site.Count(_site.Bag, Site.Wood).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        _checks.Check(Grabber.LastArrivals.Any(l => l.EndsWith(" arrived", StringComparison.Ordinal)), "the player is told it arrived", string.Join(" | ", Grabber.LastArrivals));
         yield return Until(() => Site.Count(_site.Second.GetInventory(), Site.Wood) == 45, 8f);
         _checks.Check(Site.Count(_site.Second.GetInventory(), Site.Wood) == 45, "their game took 5 wood out of the chest", Site.Count(_site.Second.GetInventory(), Site.Wood).ToString(System.Globalization.CultureInfo.InvariantCulture));
         Conserved(before);
@@ -408,6 +417,81 @@ internal sealed class Tests
         }
 
         yield return Idle();
+    }
+
+    /// <summary>
+    /// Someone else's private chest is named without what it holds; a chest someone else has open
+    /// is named with it. For the second, the chest is handed to an owner who does not exist and
+    /// marked open, which the game undoes within two seconds, so it is tried a few times.
+    /// </summary>
+    private IEnumerator Barred()
+    {
+        yield return Grab(Target.ForItem(Site.Resin, "Resin", 5));
+        string lines = string.Join(" | ", Grabber.LastLines);
+        _checks.Check(lines.Contains("some in someone's private chest"), "someone else's private chest is named", lines);
+        _checks.Check(!System.Text.RegularExpressions.Regex.IsMatch(lines, @"\d+ in someone's private chest"), "without telling what it holds", lines);
+
+        CraftyLink.OnlyChests = chest => chest == _site.Second;
+        var view = Scene.View(_site.Second);
+        var zdo = view.GetZDO();
+        bool tried = false;
+        for (int attempt = 0; attempt < 5 && !tried; attempt++)
+        {
+            yield return Until(view.IsOwner, 3f);
+            zdo.Set(ZDOVars.s_inUse, 1);
+            zdo.SetOwner(Site.Nobody);
+            yield return Until(() => false, 0.35f);
+            if (view.IsOwner())
+            {
+                continue;
+            }
+
+            tried = true;
+            yield return Grab(Target.ForItem(Site.Wood, "Wood", 5));
+            lines = string.Join(" | ", Grabber.LastLines);
+            _checks.Check(lines.Contains("50 in a chest someone has open"), "a chest someone has open is named with what it holds", lines);
+        }
+
+        if (!tried)
+        {
+            _checks.Skip("the game took the chest back every time before the grab");
+        }
+
+        yield return Until(view.IsOwner, 3f);
+        if (!view.IsOwner())
+        {
+            view.ClaimOwnership();
+        }
+
+        zdo.Set(ZDOVars.s_inUse, 0);
+    }
+
+    private bool AllListed() => _site.Listed.All(c => CraftyLink.NearbyChests(_player).Contains(c));
+
+    /// <summary>
+    /// For each test chest AzuCraftyBoxes does not list: what it checks before listing a chest,
+    /// then the chest handed to its own API so the remaining parts can run.
+    /// </summary>
+    private void ExplainUnlisted()
+    {
+        try
+        {
+            var crafty = Chainloader.PluginInfos[CraftyLink.Guid].Instance.GetType().Assembly;
+            var registry = crafty.GetType("AzuCraftyBoxes.Util.Functions.Boxes").GetField("Containers", BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null) as HashSet<Container>;
+            _player.m_customData.TryGetValue("ACB_PreventPulling", out string pull);
+            _checks.Note($"AzuCraftyBoxes pull mode is {pull ?? "unset (all)"} (0 off, 1 all, 2 mine only); it registers no chests while it is off");
+            var listed = CraftyLink.NearbyChests(_player);
+            foreach (var chest in _site.Listed.Where(c => !listed.Contains(c)))
+            {
+                var zdo = Scene.View(chest).GetZDO();
+                _checks.Note($"{chest.name} at {Site.Where(chest)}: in its registry {registry?.Contains(chest).ToString() ?? "unknown"}, creator {zdo.GetLong(ZDOVars.s_creator)} / piece {chest.GetComponentInParent<Piece>()?.GetCreator()}, you {_player.GetPlayerID()}, privacy {chest.m_privacy}, ward lets you {PrivateArea.CheckAccess(chest.transform.position, 0f, false, true)}, in use {zdo.GetInt(ZDOVars.s_inUse)}, distance {Vector3.Distance(chest.transform.position, _player.transform.position):F1} m");
+                crafty.GetType("AzuCraftyBoxes.API").GetMethod("AddContainer").Invoke(null, [chest]);
+            }
+        }
+        catch (Exception e)
+        {
+            _checks.Fail("explain why the test chests are not listed", $"{e.GetType().Name}: {e.Message}");
+        }
     }
 
     /// <summary>Takes as the key does, then waits for every answer.</summary>

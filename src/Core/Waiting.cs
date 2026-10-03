@@ -34,10 +34,11 @@ internal sealed class Waiting
         _started = now;
     }
 
-    /// <summary>Settles every take whose slot is no longer waiting; returns how many did.</summary>
-    public int Check(Func<(int X, int Y), bool> stillWaiting, float now)
+    /// <summary>Settles every take whose slot is no longer waiting; returns their slots.</summary>
+    public IReadOnlyList<(int X, int Y)> Check(Func<(int X, int Y), bool> stillWaiting, float now)
     {
-        int answered = _open.RemoveWhere(slot => !stillWaiting(slot));
+        var answered = _open.Where(slot => !stillWaiting(slot)).ToList();
+        _open.ExceptWith(answered);
         if (_open.Count > 0 && now - _started >= _timeout)
         {
             _unanswered.AddRange(_open.OrderBy(s => s.Y).ThenBy(s => s.X));
