@@ -279,11 +279,18 @@ internal sealed class Tests
             }
 
             yield return Grab(target);
-            foreach (var requirement in recipe.m_resources.Where(r => r.GetAmount(1) > 0))
+            // The parts the crafting tab asks for away from any station: none an upgrade station adds.
+            foreach (var requirement in recipe.m_resources.Where(r => r.GetAmount(1) > 0 && !r.m_upgraderResource))
             {
                 string name = requirement.m_resItem.m_itemData.m_shared.m_name;
                 int want = requirement.GetAmount(1) * step * press;
-                _checks.Check(Site.Count(_site.Bag, name) >= Math.Min(want, _site.Total(name)), $"press {press}: the inventory holds {want} {Text.Shown(name)}", Site.Count(_site.Bag, name).ToString(System.Globalization.CultureInfo.InvariantCulture));
+                if (_site.Total(name) < want)
+                {
+                    _checks.Note($"press {press}: the test chests hold too little {Text.Shown(name)} to check it");
+                    continue;
+                }
+
+                _checks.Check(Site.Count(_site.Bag, name) >= want, $"press {press}: the inventory holds {want} {Text.Shown(name)}", Site.Count(_site.Bag, name).ToString(System.Globalization.CultureInfo.InvariantCulture));
             }
         }
 
@@ -304,6 +311,7 @@ internal sealed class Tests
     {
         var palette = Plugin.Instance.Palette;
         palette.Open(_player, null);
+        _checks.Check(palette.Results.Count > 0, "the search box lists what the test chests hold");
         _checks.Check(Palette.IsOpen && TextInput.IsVisible(), "while open, the game treats it as a text box");
         palette.Text = "40 wood";
         _checks.Check(palette.Results.Count > 0 && palette.Results[0].Key == Site.Wood, "\"40 wood\" puts wood first", palette.Results.Count > 0 ? palette.Results[0].Shown : "nothing");

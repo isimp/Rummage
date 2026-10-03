@@ -151,13 +151,7 @@ internal static class Context
     /// </summary>
     private static Target OneMore(Target target, Player player)
     {
-        var cost = new Dictionary<string, int>();
-        foreach (var (name, amount) in target.Cost)
-        {
-            cost[name] = (cost.TryGetValue(name, out int sum) ? sum : 0) + amount;
-        }
-
-        return target.WithCount(Repeat.Next(cost, Scene.Carried(player), target.Count, target.AnyOf));
+        return target.WithCount(Repeat.Next(Cost.Sum(target.Cost), Scene.Carried(player), target.Count, target.AnyOf));
     }
 
     /// <summary>

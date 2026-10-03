@@ -77,14 +77,22 @@ public sealed class Plugin : BaseUnityPlugin
             return;
         }
 
-        var target = Context.Find(player);
-        if (target != null && !Held(KeyCode.LeftShift, KeyCode.RightShift))
+        try
         {
-            _grabber.Grab(player, target, Time.time);
+            var target = Context.Find(player);
+            if (target != null && !Held(KeyCode.LeftShift, KeyCode.RightShift))
+            {
+                _grabber.Grab(player, target, Time.time);
+            }
+            else
+            {
+                _palette.Open(player, target);
+            }
         }
-        else
+        catch (System.Exception e)
         {
-            _palette.Open(player, target);
+            Log.LogError($"The key failed: {e}");
+            player.Message(MessageHud.MessageType.TopLeft, "Rummage ran into an error; see the log");
         }
     }
 

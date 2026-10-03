@@ -46,7 +46,7 @@ internal sealed class Catalog
         {
             if (seen.Add(piece.m_name))
             {
-                catalog.AddCosted(Target.ForPiece(piece), piece.m_name, carried, stock);
+                catalog.Guarded(piece.m_name, () => catalog.AddCosted(Target.ForPiece(piece), piece.m_name, carried, stock));
             }
         }
 
@@ -56,12 +56,30 @@ internal sealed class Catalog
             if (recipe && recipe.m_enabled && recipe.m_item && player.IsRecipeKnown(recipe.m_item.m_itemData.m_shared.m_name)
                 && seen.Add(recipe.m_item.m_itemData.m_shared.m_name))
             {
-                catalog.AddCosted(Target.ForRecipe(recipe, 1, null, player, 1), recipe.m_item.m_itemData.m_shared.m_name, carried, stock);
+                catalog.Guarded(recipe.name, () => catalog.AddCosted(Target.ForRecipe(recipe, 1, null, player, 1), recipe.m_item.m_itemData.m_shared.m_name, carried, stock));
             }
         }
 
         return catalog;
     }
+
+    /// <summary>One piece or recipe that cannot be read is left out of the list, told once, rather than keeping the search box shut.</summary>
+    private void Guarded(string what, Action add)
+    {
+        try
+        {
+            add();
+        }
+        catch (Exception e)
+        {
+            if (Unreadable.Add(what))
+            {
+                Plugin.Log.LogWarning($"Left {what} out of the search box: {e.GetType().Name}: {e.Message}");
+            }
+        }
+    }
+
+    private static readonly HashSet<string> Unreadable = new(StringComparer.Ordinal);
 
     private void Add(Entry entry, Target target)
     {
@@ -79,7 +97,7 @@ internal sealed class Catalog
 
         int affordable = target.AnyOf
             ? target.Cost.Max(part => Stock.Affordable(new Dictionary<string, int> { [part.Name] = part.Amount }, carried, stock))
-            : Stock.Affordable(target.Cost.ToDictionary(p => p.Name, p => p.Amount), carried, stock);
+            : Stock.Affordable(Cost.Sum(target.Cost), carried, stock);
         Add(new Entry(key, target.Shown, target.Kind, affordable), target);
     }
 
