@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>Rummage</AssemblyName>
+    <RootNamespace>Rummage</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Version>0.1.0</Version>
+    <Authors>isimp</Authors>
+    <Product>Rummage</Product>
+    <Description>Search the chests around you and take what you need: a key for what the build piece in front of you costs, and a search box for anything else. Follows the rules of the storage mods it works with.</Description>
+    <Copyright>Copyright (c) 2026 isimp</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <DebugType>portable</DebugType>
+    <NoWarn>$(NoWarn);CS0649</NoWarn>
+  </PropertyGroup>
+
+  <Import Project="BuildChecks.props" />
+  <Import Project="GameReferences.props" />
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- The tests build src/Core on their own. -->
+  <ItemGroup>
+    <Compile Remove="tests/**" />
+    <Compile Remove="tools/**" />
+  </ItemGroup>
+
+  <Target Name="DeployToProfile" AfterTargets="Build"
+          Condition="'$(LibsDir)' == '' And Exists('$(BepInExDir)\plugins')">
+    <MakeDir Directories="$(DeployDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployDir)" ContinueOnError="true" />
+    <Message Importance="high" Text="Rummage -> $(DeployDir)" />
+  </Target>
+
+</Project>

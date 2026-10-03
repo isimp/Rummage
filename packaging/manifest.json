@@ -1,0 +1,7 @@
+{
+  "name": "Rummage",
+  "version_number": "0.1.0",
+  "website_url": "https://github.com/isimp/Rummage",
+  "description": "Take what a build piece costs from the chests around you with one key. Follows AzuCraftyBoxes' chest rules and Leave One Item, and works with MultiUserChest in multiplayer.",
+  "dependencies": ["Azumatt-AzuCraftyBoxes-1.8.27"]
+}
