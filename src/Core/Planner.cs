@@ -85,7 +85,7 @@ internal static class Planner
         outcome.NotAllowed += held - allowedCount;
 
         // Each chest keeps one unit of each item it holds, counted by the item, not by stack.
-        int budget = leaveOne ? Math.Min(allowedCount, held - 1) : allowedCount;
+        int budget = Stock.Budget(chest, stacks, leaveOne);
         int wanted = Math.Min(need, allowedCount);
         if (wanted > budget)
         {

@@ -6,11 +6,21 @@
 
 ## A grab
 
-1. **What for.** The build piece under the cursor in the build menu (`Hud.m_hoveredPiece`), else the piece being placed (`Player.GetSelectedPiece`). Its cost is a total to carry: what the inventory already holds counts, and only items at or above the world level count, as building only takes those.
+1. **What for.** In order: the recipe selected in the crafting tab (`InventoryGui.m_selectedRecipe`), the build piece under the cursor in the build menu (`Hud.m_hoveredPiece`), the piece being placed (`Player.GetSelectedPiece`). Nothing of the sort opens the search box, and Shift opens it on the recipe or piece. A cost is a total to carry: what the inventory already holds counts, and only items at or above the world level count, as building and crafting only take those.
+
+   A recipe follows the crafting tab's own rules: a new item at quality 1, an upgrade at the next level, each requirement at `Requirement.GetAmount(quality)`, an upgrade station's own parts only at such a station and never without one. A new item is taken for the craft amount AzuAntiArthriticCrafting is set to (`HaveRequirementItemsTranspiler.GetCurrentCraftAmount`), or for one craft without it. A recipe that needs only one ingredient (`m_requireOnlyOneIngredient`) offers only ingredients the player knows, as the game does; each is planned on its own, and the one carried in full already is chosen, else the first the chests make up in full, else the closest (`Core/Stock.cs`, `Choice.Best`).
 2. **Where from.** AzuCraftyBoxes' `API.GetNearbyContainers` at its own `Container Range`. That list already leaves out chests the player may not open, warded chests, chests open in another game and chests its own toggles exclude; mods that seal chests from automation keep them out of it. Entries that are not vanilla chests (item drawers, the player's bags) are skipped.
 3. **The plan** (`Core/Planner.cs`). Nearest chest first. A chest's rules (`API.CanItemBePulled` with the chest's and the item's prefab names) can keep an item in. With AzuCraftyBoxes' `Leave One Item` on, each chest keeps one unit of each item it holds, counted by item rather than by stack, as AzuCraftyBoxes counts it. Each take is sized to land whole in one inventory slot: a part stack of exactly the same kind first (same item and world level, and the same quality for items with quality levels), then an empty slot. No slot is the target of two takes in one grab. ExtraSlots' own slots are never targets.
 4. **The takes** (`Game/Grabber.cs`). Each one is `Inventory.MoveItemToThis(chest, item, amount, x, y)`, the call the inventory screen makes for a drag. It adds to the inventory and lowers the chest's stack in the same step, so an item is never in both places.
 5. **The report** (`Core/Report.cs`): what was taken, and for each shortfall the units kept back by `Leave One Item`, kept in by chest rules, in chests out of reach, or that there was no room.
+
+## The search box
+
+`Game/Palette.cs`, drawn with Unity's immediate-mode GUI. When it opens it reads the chests once (`Game/Catalog.cs`): every item they can give by the same rules as a grab (`Core/Stock.cs`, which the planner uses too), every piece the build menu would show (enabled and in the player's known recipes), and every known recipe at quality 1. Pieces and recipes show how many of them what is carried and what the chests give would pay for.
+
+`Core/Search.cs` parses the text (a whole number at either end is the count) and ranks: the whole name, then names starting with the text, then a word starting with it, then the text inside a word, then its letters in order. Equal matches put what the chests hold most of first. With nothing typed it lists the chests' items by name.
+
+While it is open, `TextInput.IsVisible` answers yes, which stops the player's movement, actions, chat and menu and frees the cursor. The inventory's update waits, as it reads Tab, Escape and the use key without that check, and the mouse wheel reads nothing outside the box. Each of these patches stands aside for the session if it ever fails.
 
 ## Who may change a chest
 

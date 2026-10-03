@@ -1,10 +1,16 @@
 # Rummage
 
-Take what a build piece costs from the chests around you with one key. Hover a piece in the build menu, or hold the one you are placing, and press J. Rummage counts what you already carry and takes the rest from the chests within reach.
+Take what you need from the chests around you. Press J on a recipe selected in the crafting tab, on a piece in the build menu, or while placing a piece, and Rummage takes what it still costs, counting what you already carry. Press J anywhere else to open a search box over everything the chests hold, your build pieces and your recipes.
 
 ## AI notice
 
 Most of Rummage was written by Claude Code (Anthropic), which did the heavy lifting on implementation and design. Heads-up so you can judge for yourself.
+
+## Using it
+
+A recipe is taken for as many crafts as the crafting tab is set to make, and an upgrade for the next quality level. A recipe that needs only one of its ingredients takes the one you carry already, else the first the chests hold enough of.
+
+In the search box, type part of a name and the best matches come first. The arrow keys choose, Tab completes the name, Enter takes and Escape closes. A number before or after the name sets the count, as in "40 wood" or "portal 2", or use the slider. Items show how many the chests can give, pieces and recipes how many of them you could pay for. Shift with J opens the search box on the recipe or piece in front of you instead of taking it straight away.
 
 ## How it decides
 
@@ -20,7 +26,7 @@ Each take goes through the same step as dragging an item out of a chest by hand.
 
 The key is in `BepInEx/config/isimp.Rummage.cfg`. Alt with the same key is left to other mods.
 
-Tested with AzuCraftyBoxes 1.8.27, MultiUserChest 0.6.2 and ExtraSlots 1.2.16.
+Tested with AzuCraftyBoxes 1.8.27, MultiUserChest 0.6.2, ExtraSlots 1.2.16 and AzuAntiArthriticCrafting 2.1.11.
 
 ## More
 

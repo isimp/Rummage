@@ -1,6 +1,7 @@
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
+using HarmonyLib;
 using Rummage.Game;
 using UnityEngine;
 
@@ -10,7 +11,9 @@ namespace Rummage;
 [BepInDependency(CraftyLink.Guid)]
 [BepInDependency(MucLink.Guid, BepInDependency.DependencyFlags.SoftDependency)]
 [BepInDependency(ExtraSlotsLink.Guid, BepInDependency.DependencyFlags.SoftDependency)]
+[BepInDependency(CraftAmountLink.Guid, BepInDependency.DependencyFlags.SoftDependency)]
 [BepInProcess("valheim.exe")]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA1001", Justification = "Unity ends a plugin with OnDestroy, which unpatches; a MonoBehaviour is never disposed.")]
 public sealed class Plugin : BaseUnityPlugin
 {
     public const string Guid = "isimp.Rummage";
@@ -18,16 +21,22 @@ public sealed class Plugin : BaseUnityPlugin
     public const string Version = "0.1.0";
 
     private readonly Grabber _grabber = new();
-    private ConfigEntry<KeyCode> _grabKey;
+    private Palette _palette;
+    private ConfigEntry<KeyCode> _key;
+    private Harmony _harmony;
 
     internal static ManualLogSource Log { get; private set; }
 
     private void Awake()
     {
         Log = Logger;
-        _grabKey = Config.Bind("Keys", "GrabKey", KeyCode.J,
-            "Takes what the build piece costs from the chests around you: the piece under the cursor in the build menu, or the one you are placing. "
-            + "Ignored while Alt is held, so Alt with the same key stays free for other mods.");
+        _palette = new Palette(_grabber);
+        _key = Config.Bind("Keys", "Key", KeyCode.J,
+            "Takes what the thing in front of you needs from the chests around you: the recipe selected in the crafting tab, "
+            + "the build piece under the cursor in the build menu, or the piece you are placing. With nothing of the sort, it opens the search box; "
+            + "with Shift, it opens the search box starting from that thing. Ignored while Alt is held, so Alt with the same key stays free for other mods.");
+        _harmony = new Harmony(Guid);
+        _harmony.PatchAll(typeof(Plugin).Assembly);
     }
 
     private void Start()
@@ -35,6 +44,7 @@ public sealed class Plugin : BaseUnityPlugin
         CraftyLink.Init();
         MucLink.Init();
         ExtraSlotsLink.Init();
+        CraftAmountLink.Init();
         Log.LogInfo($"Rummage {Version}: chests from AzuCraftyBoxes {(CraftyLink.Ready ? "found" : "MISSING")}, "
             + $"other players' chests {(MucLink.Ready ? "through MultiUserChest" : "left alone")}.");
     }
@@ -43,7 +53,7 @@ public sealed class Plugin : BaseUnityPlugin
     {
         _grabber.Tick(Time.time);
 
-        if (!CraftyLink.Ready || !Input.GetKeyDown(_grabKey.Value) || AltHeld())
+        if (Palette.IsOpen || !CraftyLink.Ready || !Input.GetKeyDown(_key.Value) || Held(KeyCode.LeftAlt, KeyCode.RightAlt, KeyCode.AltGr))
         {
             return;
         }
@@ -55,14 +65,38 @@ public sealed class Plugin : BaseUnityPlugin
         }
 
         var target = Context.Find(player);
-        if (target == null)
+        if (target != null && !Held(KeyCode.LeftShift, KeyCode.RightShift))
         {
-            player.Message(MessageHud.MessageType.TopLeft, "Rummage: hover or select a build piece first");
-            return;
+            _grabber.Grab(player, target, Time.time);
         }
-
-        _grabber.Grab(player, target, Time.time);
+        else
+        {
+            _palette.Open(player, target);
+        }
     }
 
-    private static bool AltHeld() => Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt) || Input.GetKey(KeyCode.AltGr);
+    private void OnGUI() => _palette.OnGUI();
+
+    private void OnDestroy()
+    {
+        if (Palette.IsOpen)
+        {
+            _palette.Close();
+        }
+
+        _harmony?.UnpatchSelf();
+    }
+
+    private static bool Held(params KeyCode[] keys)
+    {
+        foreach (var key in keys)
+        {
+            if (Input.GetKey(key))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

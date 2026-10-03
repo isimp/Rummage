@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rummage.Core;
 using UnityEngine;
 
@@ -43,7 +44,7 @@ internal sealed class Grabber
         }
 
         var scene = Scene.Read(player);
-        var plan = Planner.Make(target.Wants, scene.Sources, scene.Bag, CraftyLink.LeaveOne);
+        var plan = Plan(target, scene);
 
         var bag = player.GetInventory();
         var taken = new Dictionary<string, int>();
@@ -77,10 +78,26 @@ internal sealed class Grabber
             Highlight(chest);
         }
 
-        foreach (string line in Report.Lines(target.Label, plan, taken, skipped, Shown))
+        foreach (string line in Report.Lines(target.Label, plan, taken, skipped, Text.Shown))
         {
             Say(player, line);
         }
+    }
+
+    /// <summary>
+    /// The plan for the target. A recipe that takes any one of its ingredients is planned once per
+    /// ingredient, and the one carried already, else the first the chests make up in full, else
+    /// the closest, is fetched.
+    /// </summary>
+    private static Plan Plan(Target target, Scene scene)
+    {
+        if (!target.AnyOf || target.Cost.Count < 2)
+        {
+            return Planner.Make(target.Wants(), scene.Sources, scene.Bag, CraftyLink.LeaveOne);
+        }
+
+        var plans = target.Cost.Select(part => Planner.Make([target.Want(part)], scene.Sources, scene.Bag, CraftyLink.LeaveOne)).ToList();
+        return plans[Choice.Best(plans)];
     }
 
     /// <summary>Makes one take; returns how many items it moved or asked for, zero when it was not made.</summary>
@@ -139,8 +156,6 @@ internal sealed class Grabber
             piece.Highlight();
         }
     }
-
-    private static string Shown(string name) => Localization.instance != null ? Localization.instance.Localize(name) : name;
 
     private static void Say(Player player, string line) => player.Message(MessageHud.MessageType.TopLeft, line);
 }
