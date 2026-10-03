@@ -27,6 +27,9 @@ internal static class CraftyLink
     private static ConfigEntryBase _leaveOne;
     private static ConfigEntryBase _range;
 
+    /// <summary>The self-test narrows the chests to its own while it runs; null otherwise.</summary>
+    internal static Func<Container, bool> OnlyChests { get; set; }
+
     /// <summary>Whether AzuCraftyBoxes was found and understood; without it Rummage does nothing.</summary>
     public static bool Ready { get; private set; }
 
@@ -91,7 +94,7 @@ internal static class CraftyLink
             {
                 foreach (object entry in found)
                 {
-                    if (entry != null && ContainerOf(entry) is Container chest && chest)
+                    if (entry != null && ContainerOf(entry) is Container chest && chest && (OnlyChests == null || OnlyChests(chest)))
                     {
                         chests.Add(chest);
                     }

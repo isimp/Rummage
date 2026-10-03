@@ -27,9 +27,16 @@ public sealed class Plugin : BaseUnityPlugin
 
     internal static ManualLogSource Log { get; private set; }
 
+    internal static Plugin Instance { get; private set; }
+
+    internal Grabber Grabber => _grabber;
+
+    internal Palette Palette => _palette;
+
     private void Awake()
     {
         Log = Logger;
+        Instance = this;
         _palette = new Palette(_grabber);
         _key = Config.Bind("Keys", "Key", KeyCode.J,
             "Takes what the thing in front of you needs from the chests around you: the recipe selected in the crafting tab, "

@@ -29,7 +29,7 @@ internal sealed class Catalog
     {
         var catalog = new Catalog();
         var stock = Stock.Takeable(scene.Sources, CraftyLink.LeaveOne, global::Game.m_worldLevel);
-        var carried = Carried(player);
+        var carried = Scene.Carried(player);
 
         foreach (var stack in scene.Sources.SelectMany(s => s.Stacks))
         {
@@ -107,20 +107,5 @@ internal sealed class Catalog
                 }
             }
         }
-    }
-
-    /// <summary>What the inventory holds that building and crafting count, by item name.</summary>
-    private static Dictionary<string, int> Carried(Player player)
-    {
-        var carried = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var item in player.GetInventory().GetAllItems())
-        {
-            if (item?.m_shared != null && item.m_worldLevel >= global::Game.m_worldLevel)
-            {
-                carried[item.m_shared.m_name] = (carried.TryGetValue(item.m_shared.m_name, out int n) ? n : 0) + item.m_stack;
-            }
-        }
-
-        return carried;
     }
 }

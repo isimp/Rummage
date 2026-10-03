@@ -28,6 +28,8 @@
   <ItemGroup>
     <Compile Remove="tests/**" />
     <Compile Remove="tools/**" />
+    <Compile Remove="selftest/**" />
+    <InternalsVisibleTo Include="Rummage.SelfTest" />
   </ItemGroup>
 
   <Target Name="DeployToProfile" AfterTargets="Build"

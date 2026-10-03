@@ -113,18 +113,21 @@ internal static class Context
     /// the crafting tab. Otherwise the build piece under the cursor in the build menu, else the
     /// piece being placed.
     /// </summary>
-    public static Target Find(Player player)
+    public static Target Find(Player player) => Find(player, hovered: true);
+
+    /// <summary>As <see cref="Find(Player)"/>; the self-test leaves out the stack under the cursor, which it cannot place.</summary>
+    internal static Target Find(Player player, bool hovered)
     {
         if (InventoryGui.IsVisible() && InventoryGui.instance)
         {
-            if (HoveredStack(player) is ItemDrop.ItemData held)
+            if (hovered && HoveredStack(player) is ItemDrop.ItemData held)
             {
                 return Target.ForTopUp(Scene.StackOf(held));
             }
 
             if (Recipe(player) is Target recipe)
             {
-                return recipe;
+                return OneMore(recipe, player);
             }
         }
 
@@ -139,7 +142,22 @@ internal static class Context
             piece = player.GetSelectedPiece();
         }
 
-        return piece ? Target.ForPiece(piece) : null;
+        return piece ? OneMore(Target.ForPiece(piece), player) : null;
+    }
+
+    /// <summary>
+    /// Each press is for one more than what is carried already pays for: one piece more, or one
+    /// more round of the crafting tab's craft amount.
+    /// </summary>
+    private static Target OneMore(Target target, Player player)
+    {
+        var cost = new Dictionary<string, int>();
+        foreach (var (name, amount) in target.Cost)
+        {
+            cost[name] = (cost.TryGetValue(name, out int sum) ? sum : 0) + amount;
+        }
+
+        return target.WithCount(Repeat.Next(cost, Scene.Carried(player), target.Count, target.AnyOf));
     }
 
     /// <summary>

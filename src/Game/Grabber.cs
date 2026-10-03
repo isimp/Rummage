@@ -21,6 +21,12 @@ internal sealed class Grabber
 
     public bool Busy => _waiting.Busy;
 
+    /// <summary>What the last grab reported, for the self-test.</summary>
+    internal IReadOnlyList<string> LastLines { get; private set; } = [];
+
+    /// <summary>Takes the last grab gave up waiting for, for the self-test.</summary>
+    internal int LastUnanswered => _waiting.Unanswered.Count;
+
     public void Tick(float now)
     {
         if (!_waiting.Busy || _waitingBag == null)
@@ -78,7 +84,8 @@ internal sealed class Grabber
             Highlight(chest);
         }
 
-        foreach (string line in Report.Lines(target.Label, plan, taken, skipped, Text.Shown))
+        LastLines = Report.Lines(target.Label, plan, taken, skipped, Text.Shown);
+        foreach (string line in LastLines)
         {
             Say(player, line);
         }

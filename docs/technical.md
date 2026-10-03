@@ -8,6 +8,8 @@
 
 1. **What for.** In order: with the inventory open, a stack of the player's under the cursor (`InventoryGrid.GetHoveredElement`, `GetElementPos`), then the recipe selected in the crafting tab (`InventoryGui.m_selectedRecipe`), the build piece under the cursor in the build menu (`Hud.m_hoveredPiece`), the piece being placed (`Player.GetSelectedPiece`). Nothing of the sort opens the search box, and Shift opens it on the recipe or piece. A cost is a total to carry: what the inventory already holds counts, and only items at or above the world level count, as building and crafting only take those.
 
+   Each press is for one more than what is carried already pays for (`Core/Repeat.cs`): a piece counts what the inventory pays for in whole pieces and asks for one more; a recipe steps by the craft amount, so with 5 set and enough carried for 7 crafts, the press is for 10. For a recipe that needs any one ingredient, the best covered ingredient counts.
+
    A stack is filled to a full one: only items that stack with it (same item and world level, and quality for items with quality levels), and only into its own slot, whatever kind of slot that is, so an ammo slot of ExtraSlots is filled too.
 
    A recipe follows the crafting tab's own rules: a new item at quality 1, an upgrade at the next level, each requirement at `Requirement.GetAmount(quality)`, an upgrade station's own parts only at such a station and never without one. A new item is taken for the craft amount AzuAntiArthriticCrafting is set to (`HaveRequirementItemsTranspiler.GetCurrentCraftAmount`), or for one craft without it. A recipe that needs only one ingredient (`m_requireOnlyOneIngredient`) offers only ingredients the player knows, as the game does; each is planned on its own, and the one carried in full already is chosen, else the first the chests make up in full, else the closest (`Core/Stock.cs`, `Choice.Best`).
@@ -42,6 +44,14 @@ MultiUserChest's answer arrives later. The next grab waits until every slot of t
 ## Reaching the other mods
 
 AzuCraftyBoxes, MultiUserChest and ExtraSlots are reached by type and member name at startup, not as build references. A member that cannot be found is logged once and its part is switched off: without AzuCraftyBoxes Rummage does nothing, without MultiUserChest other games' chests are left alone, and without ExtraSlots' check only the first four rows are filled.
+
+## Self-test
+
+`selftest/` is a plugin of its own, `Rummage.SelfTest`, built and deployed with a dev build and built in CI, never packaged. `/rummage selftest` in chat runs it where the player stands. It sets the player's belongings (all but what is equipped) aside in vault chests it builds, builds three test chests in front of the player and fills them with known items, and narrows Rummage's chests to those while it runs (`CraftyLink.OnlyChests`). Each part starts from refilled chests and an emptied inventory and uses the key's own entry points (`Context.Find`, `Grabber.Grab`, the search box's text and Enter). After every grab it checks that the inventory and the test chests hold together exactly what they held before.
+
+Parts: a piece selected with the hammer, pressed twice; Leave One Item; chest rules (a private chest); a full inventory with one part stack; a recipe in the crafting tab, pressed twice; filling a stack; the search box; a chest handed to an owner that does not exist (MultiUserChest's request is never answered: the chest must not change here, the wait must end after its timeout, and the slot MultiUserChest holds is let go afterwards; the chest comes back to the player's game by itself, as the game gives a chest whose owner is not near to a player who is); and a chest handed to another player's game nearby, the way opening a chest hands it over, so their MultiUserChest answers and their game takes the items out. The last part is skipped when nobody else is within 30 m.
+
+Everything is put back at the end: the player's belongings into the slots they came from, the test chests emptied and removed. What cannot be put back stays in its vault chest, which is left standing and reported with its place. Results are in `LogOutput.log` as `[selftest]` lines, ending with a `DONE` summary.
 
 ## Building
 

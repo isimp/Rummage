@@ -65,6 +65,21 @@ internal sealed class Scene
         return MucLink.Carries(chest, view) ? Reach.Routed : Reach.Closed;
     }
 
+    /// <summary>What the inventory holds that building and crafting count, by item name.</summary>
+    public static Dictionary<string, int> Carried(Player player)
+    {
+        var carried = new Dictionary<string, int>(System.StringComparer.Ordinal);
+        foreach (var item in player.GetInventory().GetAllItems())
+        {
+            if (item?.m_shared != null && item.m_worldLevel >= global::Game.m_worldLevel)
+            {
+                carried[item.m_shared.m_name] = (carried.TryGetValue(item.m_shared.m_name, out int n) ? n : 0) + item.m_stack;
+            }
+        }
+
+        return carried;
+    }
+
     /// <summary>An item as the planner sees it.</summary>
     public static ItemStack StackOf(ItemDrop.ItemData item)
     {

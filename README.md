@@ -8,7 +8,7 @@ Most of Rummage was written by Claude Code (Anthropic), which did the heavy lift
 
 ## Using it
 
-A stack is filled only with items of exactly its kind, and nothing goes anywhere else in your inventory. A recipe is taken for as many crafts as the crafting tab is set to make, and an upgrade for the next quality level. A recipe that needs only one of its ingredients takes the one you carry already, else the first the chests hold enough of.
+Each press brings enough for one more: one more piece than what you carry already pays for, or for a recipe one more round of the amount the crafting tab is set to make. A stack is filled only with items of exactly its kind, and nothing goes anywhere else in your inventory. A recipe is taken for as many crafts as the crafting tab is set to make, and an upgrade for the next quality level. A recipe that needs only one of its ingredients takes the one you carry already, else the first the chests hold enough of.
 
 In the search box, type part of a name and the best matches come first. The arrow keys choose, Tab completes the name, Enter takes and Escape closes. A number before or after the name sets the count, as in "40 wood" or "portal 2", or use the slider. Items show how many the chests can give, pieces and recipes how many of them you could pay for. Shift with J opens the search box on the recipe or piece in front of you instead of taking it straight away.
 

@@ -22,6 +22,10 @@ jobs:
       - name: Build
         run: dotnet build -c Release -p:LibsDir=lib --nologo
 
+      # The in-game self-test is a plugin of its own, never packaged; built here so it keeps up with Rummage.
+      - name: Build the self-test
+        run: dotnet build selftest -c Release -p:LibsDir=lib --nologo
+
       # The tests cover the part of Rummage that needs no game.
       - name: Test
         run: dotnet test tests/Rummage.Tests --nologo

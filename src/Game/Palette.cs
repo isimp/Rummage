@@ -41,6 +41,26 @@ internal sealed class Palette
 
     public static bool IsOpen { get; private set; }
 
+    /// <summary>The search text, as the self-test types it.</summary>
+    internal string Text
+    {
+        get => _text;
+        set
+        {
+            _text = value ?? string.Empty;
+            Rank();
+        }
+    }
+
+    internal IReadOnlyList<Entry> Results => _results;
+
+    /// <summary>Enter, as the self-test presses it.</summary>
+    internal void TakeChosen(Player player)
+    {
+        Rank();
+        Take(player);
+    }
+
     /// <summary>Opens the search box, starting from what the player is looking at when there is something.</summary>
     public void Open(Player player, Target context)
     {
