@@ -65,6 +65,14 @@ internal sealed class Scene
         return MucLink.Carries(chest, view) ? Reach.Routed : Reach.Closed;
     }
 
+    /// <summary>An item as the planner sees it.</summary>
+    public static ItemStack StackOf(ItemDrop.ItemData item)
+    {
+        string prefab = item.m_dropPrefab ? item.m_dropPrefab.name : item.m_shared.m_name;
+        return new ItemStack(item.m_shared.m_name, prefab, item.m_stack, item.m_shared.m_maxStackSize,
+            item.m_gridPos.x, item.m_gridPos.y, item.m_quality, item.m_worldLevel, item.m_shared.m_maxQuality > 1);
+    }
+
     private static List<ItemStack> Stacks(Inventory inventory)
     {
         var stacks = new List<ItemStack>();
@@ -75,9 +83,7 @@ internal sealed class Scene
                 continue;
             }
 
-            string prefab = item.m_dropPrefab ? item.m_dropPrefab.name : item.m_shared.m_name;
-            stacks.Add(new ItemStack(item.m_shared.m_name, prefab, item.m_stack, item.m_shared.m_maxStackSize,
-                item.m_gridPos.x, item.m_gridPos.y, item.m_quality, item.m_worldLevel, item.m_shared.m_maxQuality > 1));
+            stacks.Add(StackOf(item));
         }
 
         return stacks;

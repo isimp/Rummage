@@ -114,12 +114,30 @@ internal sealed class Bag
 internal sealed class Want
 {
     public Want(string name, int count, bool countCarried, int minWorldLevel)
+        : this(name, count, countCarried, minWorldLevel, exact: null)
+    {
+    }
+
+    private Want(string name, int count, bool countCarried, int minWorldLevel, ItemStack exact)
     {
         Name = name;
         Count = Math.Max(0, count);
         CountCarried = countCarried;
         MinWorldLevel = minWorldLevel;
+        Into = exact;
     }
+
+    /// <summary>
+    /// Fills one carried stack to a full stack: only items that stack with it are taken, and
+    /// they go into that slot alone, whatever kind of slot it is.
+    /// </summary>
+    public static Want TopUp(ItemStack held)
+        => new(held.Name, held.MaxStack - held.Count, countCarried: false, held.WorldLevel, held);
+
+    /// <summary>For a top-up, the carried stack to fill; otherwise none.</summary>
+    public ItemStack Into { get; }
+
+    public Want WithCount(int count) => new(Name, count, CountCarried, MinWorldLevel, Into);
 
     public string Name { get; }
 
@@ -134,7 +152,9 @@ internal sealed class Want
     public int MinWorldLevel { get; }
 
     public bool Matches(ItemStack stack)
-        => string.Equals(stack.Name, Name, StringComparison.Ordinal) && stack.WorldLevel >= MinWorldLevel;
+        => Into != null
+            ? Into.StacksWith(stack)
+            : string.Equals(stack.Name, Name, StringComparison.Ordinal) && stack.WorldLevel >= MinWorldLevel;
 }
 
 /// <summary>One take: an amount from a chest slot into one inventory slot that holds all of it.</summary>
@@ -203,6 +223,12 @@ internal sealed class Outcome
 
     /// <summary>Whether the inventory ran out of room before the grab was done.</summary>
     public bool OutOfRoom { get; internal set; }
+
+    /// <summary>
+    /// Whether the only slot this could go into waits for another player's chest to answer, so
+    /// the rest needs another press.
+    /// </summary>
+    public bool AwaitsAnswer { get; internal set; }
 
     public int Short => Math.Max(0, Need - Planned);
 }

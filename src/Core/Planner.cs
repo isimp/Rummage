@@ -9,9 +9,9 @@ namespace Rummage.Core;
 /// slot takes each part.
 /// </summary>
 /// <remarks>
-/// Every move is sized to land whole in its target slot, and no slot is the target of two moves
-/// in one grab. A move into another player's chest is answered later, and the slot it fills
-/// stays reserved until then, so a second move into the same slot would be turned away.
+/// Every move is sized to land whole in its target slot. A take from a chest this game holds
+/// happens at once, so several may fill one slot. A take from another player's chest is answered
+/// later and its slot stays reserved until then, so that slot gets nothing more in the same grab.
 /// </remarks>
 internal static class Planner
 {
@@ -56,8 +56,7 @@ internal static class Planner
             }
             else
             {
-                var first = merged[at];
-                merged[at] = new Want(first.Name, first.Count + want.Count, first.CountCarried, Math.Max(first.MinWorldLevel, want.MinWorldLevel));
+                merged[at] = merged[at].WithCount(merged[at].Count + want.Count);
             }
         }
 
@@ -99,14 +98,16 @@ internal static class Planner
             int left = stack.Count;
             while (left > 0 && took < take)
             {
-                if (!slots.TryFind(stack, out int toX, out int toY, out int room))
+                var fit = slots.TryFind(stack, want.Into, out int toX, out int toY, out int room);
+                if (fit != Fit.Found)
                 {
-                    outcome.OutOfRoom = true;
+                    outcome.OutOfRoom = fit == Fit.NoRoom;
+                    outcome.AwaitsAnswer = fit == Fit.Waiting;
                     return took;
                 }
 
                 int amount = Math.Min(Math.Min(left, take - took), room);
-                slots.Place(toX, toY, stack, amount);
+                slots.Place(toX, toY, stack, amount, chest.Reach == Reach.Routed);
                 moves.Add(new Move(chest.Id, chest.Reach, stack.Name, stack.X, stack.Y, toX, toY, amount));
                 left -= amount;
                 took += amount;
@@ -122,12 +123,19 @@ internal static class Planner
         return took;
     }
 
-    /// <summary>The inventory as the grab fills it, with the slots this grab already targets.</summary>
+    private enum Fit
+    {
+        Found,
+        NoRoom,
+        Waiting,
+    }
+
+    /// <summary>The inventory as the grab fills it, with the slots reserved for an answer.</summary>
     private sealed class SlotMap
     {
         private readonly Bag _bag;
         private readonly Dictionary<(int X, int Y), (ItemStack Kind, int Count)> _held = new();
-        private readonly HashSet<(int X, int Y)> _targeted = new();
+        private readonly HashSet<(int X, int Y)> _awaiting = new();
 
         public SlotMap(Bag bag)
         {
@@ -138,36 +146,60 @@ internal static class Planner
             }
         }
 
-        /// <summary>A part stack of the same kind with room comes first, then an empty slot.</summary>
-        public bool TryFind(ItemStack item, out int x, out int y, out int room)
+        /// <summary>
+        /// For a top-up, the stack being filled and nothing else. Otherwise a part stack of the
+        /// same kind with room first, then an empty slot ordinary items may use.
+        /// </summary>
+        public Fit TryFind(ItemStack item, ItemStack into, out int x, out int y, out int room)
         {
+            (x, y, room) = (-1, -1, 0);
+            if (into != null)
+            {
+                var slot = (into.X, into.Y);
+                if (_awaiting.Contains(slot))
+                {
+                    return Fit.Waiting;
+                }
+
+                if (!_held.TryGetValue(slot, out var held) || !held.Kind.StacksWith(item) || held.Count >= item.MaxStack)
+                {
+                    return Fit.NoRoom;
+                }
+
+                (x, y, room) = (slot.X, slot.Y, item.MaxStack - held.Count);
+                return Fit.Found;
+            }
+
             foreach (var slot in Order())
             {
-                if (!_targeted.Contains(slot) && _held.TryGetValue(slot, out var held)
+                if (!_awaiting.Contains(slot) && _held.TryGetValue(slot, out var held)
                     && held.Kind.StacksWith(item) && held.Count < item.MaxStack)
                 {
                     (x, y, room) = (slot.X, slot.Y, item.MaxStack - held.Count);
-                    return true;
+                    return Fit.Found;
                 }
             }
 
             foreach (var slot in Order())
             {
-                if (!_targeted.Contains(slot) && !_held.ContainsKey(slot) && _bag.IsUsable(slot.X, slot.Y))
+                if (!_awaiting.Contains(slot) && !_held.ContainsKey(slot) && _bag.IsUsable(slot.X, slot.Y))
                 {
                     (x, y, room) = (slot.X, slot.Y, item.MaxStack);
-                    return true;
+                    return Fit.Found;
                 }
             }
 
-            (x, y, room) = (-1, -1, 0);
-            return false;
+            return Fit.NoRoom;
         }
 
-        public void Place(int x, int y, ItemStack item, int amount)
+        public void Place(int x, int y, ItemStack item, int amount, bool awaitsAnswer)
         {
             var slot = (x, y);
-            _targeted.Add(slot);
+            if (awaitsAnswer)
+            {
+                _awaiting.Add(slot);
+            }
+
             _held[slot] = _held.TryGetValue(slot, out var held) ? (held.Kind, held.Count + amount) : (item, amount);
         }
 

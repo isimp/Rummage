@@ -9,8 +9,9 @@ namespace Rummage.Game;
 /// <summary>What a grab is for: what one of it costs, and how many.</summary>
 internal sealed class Target
 {
-    public Target(string shown, EntryKind kind, IReadOnlyList<(string Name, int Amount)> cost, int count, bool anyOf)
+    public Target(string shown, EntryKind kind, IReadOnlyList<(string Name, int Amount)> cost, int count, bool anyOf, ItemStack into = null)
     {
+        Into = into;
         Shown = shown;
         Kind = kind;
         Cost = cost;
@@ -30,18 +31,25 @@ internal sealed class Target
     /// <summary>A recipe that takes any one of its ingredients rather than all of them.</summary>
     public bool AnyOf { get; }
 
-    public string Label => Count > 1 ? $"{Shown} x{Count}" : Shown;
+    /// <summary>For a top-up, the carried stack to fill; otherwise none.</summary>
+    public ItemStack Into { get; }
 
-    public Target WithCount(int count) => new(Shown, Kind, Cost, count, AnyOf);
+    public string Label => Into != null ? $"{Shown} to a full stack" : Count > 1 ? $"{Shown} x{Count}" : Shown;
+
+    public Target WithCount(int count) => new(Shown, Kind, Cost, count, AnyOf, Into);
 
     /// <summary>
     /// What to ask the chests for. A piece or recipe is a total to carry, so what the inventory
     /// already holds counts; an item is a number to bring.
     /// </summary>
-    public List<Want> Wants() => Cost.Select(Want).ToList();
+    public List<Want> Wants() => Into != null ? [Core.Want.TopUp(Into).WithCount(Count)] : Cost.Select(Want).ToList();
 
     public Want Want((string Name, int Amount) part)
         => new(part.Name, part.Amount * Count, countCarried: Kind != EntryKind.Item, minWorldLevel: global::Game.m_worldLevel);
+
+    /// <summary>Fills a carried stack to a full stack.</summary>
+    public static Target ForTopUp(ItemStack held)
+        => new(Text.Shown(held.Name), EntryKind.Item, [(held.Name, 1)], held.MaxStack - held.Count, anyOf: false, held);
 
     public static Target ForItem(string name, string shown, int count)
         => new(shown, EntryKind.Item, [(name, 1)], count, anyOf: false);
@@ -97,15 +105,27 @@ internal static class Context
     private static PropertyInfo _recipeOf;
     private static PropertyInfo _upgradeOf;
 
+    private static readonly MethodInfo HoveredElement = AccessTools.Method(typeof(InventoryGrid), "GetHoveredElement");
+    private static readonly MethodInfo ElementPos = AccessTools.Method(typeof(InventoryGrid), "GetElementPos");
+
     /// <summary>
-    /// The recipe selected in the crafting tab, else the build piece under the cursor in the
-    /// build menu, else the piece being placed.
+    /// With the inventory open: a stack of yours under the cursor, else the recipe selected in
+    /// the crafting tab. Otherwise the build piece under the cursor in the build menu, else the
+    /// piece being placed.
     /// </summary>
     public static Target Find(Player player)
     {
-        if (InventoryGui.IsVisible() && InventoryGui.instance && Recipe(player) is Target recipe)
+        if (InventoryGui.IsVisible() && InventoryGui.instance)
         {
-            return recipe;
+            if (HoveredStack(player) is ItemDrop.ItemData held)
+            {
+                return Target.ForTopUp(Scene.StackOf(held));
+            }
+
+            if (Recipe(player) is Target recipe)
+            {
+                return recipe;
+            }
         }
 
         Piece piece = null;
@@ -120,6 +140,28 @@ internal static class Context
         }
 
         return piece ? Target.ForPiece(piece) : null;
+    }
+
+    /// <summary>
+    /// A stack in the player's inventory under the cursor, found the way the inventory grid finds
+    /// it; only an item that stacks, as a single one has nothing to fill.
+    /// </summary>
+    private static ItemDrop.ItemData HoveredStack(Player player)
+    {
+        var grid = InventoryGui.instance.m_playerGrid;
+        if (!grid || HoveredElement == null || ElementPos == null)
+        {
+            return null;
+        }
+
+        object element = HoveredElement.Invoke(grid, null);
+        if (element == null || ElementPos.Invoke(grid, [element]) is not Vector2i at || at.x < 0)
+        {
+            return null;
+        }
+
+        var item = player.GetInventory().GetItemAt(at.x, at.y);
+        return item?.m_shared != null && item.m_shared.m_maxStackSize > 1 ? item : null;
     }
 
     /// <summary>

@@ -46,7 +46,7 @@ internal sealed class Palette
     {
         _catalog = Catalog.Build(player, Scene.Read(player));
         _context = context;
-        _contextEntry = context == null ? null : new Entry(string.Empty, context.Label, context.Kind, 0);
+        _contextEntry = context == null ? null : new Entry(string.Empty, context.Label, context.Kind, context.Count);
         _text = context?.Shown ?? string.Empty;
         _rankedFor = null;
         _selected = 0;
@@ -338,7 +338,12 @@ internal sealed class Palette
         string many = entry.InChests.ToString("N0", CultureInfo.InvariantCulture);
         if (entry == _contextEntry)
         {
-            return entry.Kind == EntryKind.Recipe ? "selected recipe" : "selected piece";
+            return entry.Kind switch
+            {
+                EntryKind.Recipe => "selected recipe",
+                EntryKind.Piece => "selected piece",
+                _ => "your stack, to a full stack",
+            };
         }
 
         return entry.Kind switch

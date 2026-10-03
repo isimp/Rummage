@@ -64,7 +64,11 @@ internal static class Report
             yield return $"{Number(outcome.Unreachable)} in a chest out of reach";
         }
 
-        if (outcome.OutOfRoom)
+        if (outcome.AwaitsAnswer)
+        {
+            yield return "the rest once the other chest has answered; press again";
+        }
+        else if (outcome.OutOfRoom)
         {
             yield return "no room left in your inventory";
         }

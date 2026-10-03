@@ -178,16 +178,37 @@ public class PlannerTests
     }
 
     [Fact]
-    public void NoTwoMovesInOneGrabShareATargetSlot()
+    public void ASlotWaitingForAnotherPlayersChestGetsNoSecondTakeInTheSameGrab()
     {
         var bag = Inventory(Stack(Wood, 10));
         var plan = Plan(bag, false, [Bring(Wood, 60)],
-            Chest(1, 5, Stack(Wood, 15)),
+            Chest(1, 5, Reach.Routed, Stack(Wood, 15)),
             Chest(2, 6, Stack(Wood, 15)),
-            Chest(3, 7, Stack(Wood, 30)));
+            Chest(3, 7, Reach.Routed, Stack(Wood, 30)));
 
-        Assert.Equal(plan.Moves.Count, plan.Moves.Select(m => (m.ToX, m.ToY)).Distinct().Count());
+        // Moves are made in order; once a slot waits for an answer, no later move may target it.
+        for (int i = 0; i < plan.Moves.Count; i++)
+        {
+            var routed = plan.Moves[i];
+            if (routed.Reach == Reach.Routed)
+            {
+                Assert.DoesNotContain(plan.Moves.Skip(i + 1), m => (m.ToX, m.ToY) == (routed.ToX, routed.ToY));
+            }
+        }
+
         Assert.Equal(60, plan.Planned(Wood));
+    }
+
+    [Fact]
+    public void TakesFromChestsThisGameHoldsMayFillOneStackTogether()
+    {
+        var bag = Inventory(Stack(Wood, 10));
+        var plan = Plan(bag, false, [Bring(Wood, 40)],
+            Chest(1, 5, Stack(Wood, 15)),
+            Chest(2, 6, Stack(Wood, 25)));
+
+        Assert.Equal((Wood, 50), plan.After(bag)[(0, 0)]);
+        Assert.Single(plan.After(bag));
     }
 
     [Fact]
