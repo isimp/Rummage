@@ -28,6 +28,8 @@ internal sealed class Catalog
 
     public Target TargetOf(Entry entry) => _targets.TryGetValue(entry, out var target) ? target : null;
 
+    public UnityEngine.Sprite IconOf(Entry entry) => TargetOf(entry)?.Icon;
+
     /// <summary>How many of an item make a full stack, for the count a grab starts at.</summary>
     public int StackSize(string name) => _stackSizes.TryGetValue(name, out int size) ? size : 1;
 

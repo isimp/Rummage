@@ -196,8 +196,12 @@ internal sealed class Tests
 
         var next = Context.PieceTarget(_player);
         var scene = Scene.Read(_player);
-        string line = Readout.Line(next.Label, Planner.Make(next.Wants(), scene.Sources, scene.Bag, CraftyLink.LeaveOne), "J", Text.Shown);
-        _checks.Check(line.Contains($"in your bag: Wood {cost * 2}/{cost * 3}") && line.Contains($"J brings {cost} Wood"), "while building, the line shows the bag and what the next press brings", line);
+        string line = Readout.Panel(Planner.Make(next.Wants(), scene.Sources, scene.Bag, CraftyLink.LeaveOne), next.Count, "J", Text.Shown);
+        _checks.Check(line.Contains($"Wood {cost * 2}/{cost * 3}") && line.Contains($"J brings {cost} Wood"), "while building, the panel text shows the bag and what the next press brings", line);
+        Plugin.Instance.BuildLine.Refresh();
+        yield return Frames(5);
+        var shown = Hud.instance && Hud.instance.m_pieceDescription ? Hud.instance.m_pieceDescription.transform.Find("Rummage")?.GetComponent<TMPro.TMP_Text>() : null;
+        _checks.Check(shown && shown.gameObject.activeInHierarchy && shown.text.Contains("in your bag"), "the text shows in the game's build panel", shown ? shown.text : "not there");
 
         yield return CountingPastAMissingPart();
         _site.PutHandsBack();

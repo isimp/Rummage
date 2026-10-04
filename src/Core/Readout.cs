@@ -8,24 +8,35 @@ namespace Rummage.Core;
 /// <summary>What you carry for something, shown before a press: while a piece is selected, and in the search box.</summary>
 internal static class Readout
 {
+    /// <summary>Valheim's orange, for what the key would bring.</summary>
+    public const string Coming = "#FFA13C";
+
+    /// <summary>For what cannot be had: not carried and not in the chests.</summary>
+    public const string Missing = "#E8604C";
+
     /// <summary>
-    /// The line shown while a piece is selected: what the inventory holds of each part against
-    /// what the next press is for, what that press would bring, and what would still be short.
+    /// The text under the selected piece in the game's build panel: what the inventory holds of
+    /// each part against what the next press is for (orange where the press would bring it, red
+    /// where it cannot be had), then what that press would bring and what would still be short.
     /// </summary>
-    public static string Line(string label, Plan plan, string key, Func<string, string> shown)
+    public static string Panel(Plan plan, int count, string key, Func<string, string> shown)
     {
-        string bag = string.Join(" · ", plan.Outcomes.Select(o => $"{shown(o.Name)} {Number(o.Carried)}/{Number(o.Wanted)}"));
+        var parts = plan.Outcomes.Select(o =>
+        {
+            string part = $"{shown(o.Name)} {Number(o.Carried)}/{Number(o.Wanted)}";
+            return o.Need == 0 ? part : $"<color={(o.Short > 0 ? Missing : Coming)}>{part}</color>";
+        });
+        string bag = $"{(count > 1 ? $"For {Number(count)} · in your bag" : "In your bag")}: {string.Join(" · ", parts)}";
         if (plan.Outcomes.All(o => o.Need == 0))
         {
-            return $"{label} · in your bag: {bag} · you carry it all";
+            return $"{bag}\nYou carry it all";
         }
 
         var brings = plan.Outcomes.Where(o => o.Planned > 0).Select(o => $"{Number(o.Planned)} {shown(o.Name)}").ToList();
         var shorts = plan.Outcomes.Where(o => o.Short > 0).Select(o => shown(o.Name)).ToList();
-        string line = $"{label} · in your bag: {bag} · {key} brings {(brings.Count > 0 ? string.Join(", ", brings) : "nothing")}";
-        return shorts.Count > 0 ? $"{line} · short: {string.Join(", ", shorts)}" : line;
+        string press = $"{key} brings {(brings.Count > 0 ? string.Join(", ", brings) : "nothing")}";
+        return shorts.Count > 0 ? $"{bag}\n{press} · short: {string.Join(", ", shorts)}" : $"{bag}\n{press}";
     }
-
     /// <summary>A piece's or recipe's parts in the search box: carried, plus what the chests give, against what the count needs.</summary>
     public static string Parts(IReadOnlyDictionary<string, int> cost, int count, IReadOnlyDictionary<string, int> carried,
         IReadOnlyDictionary<string, int> takeable, Func<string, string> shown)

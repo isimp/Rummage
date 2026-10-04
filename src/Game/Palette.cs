@@ -17,7 +17,8 @@ internal sealed class Palette
     private const string FieldName = "RummageSearch";
     private const int VisibleRows = 10;
     private const float Width = 640f;
-    private const float RowHeight = 30f;
+    private const float RowHeight = 32f;
+    private const float Pad = 30f;
     private const float Top = 140f;
 
     private readonly Grabber _grabber;
@@ -238,6 +239,11 @@ internal sealed class Palette
         _grabber.Grab(player, target, Time.time);
     }
 
+    /// <summary>
+    /// The box in the game's own art: its wood panel, a Norse heading, a text field, item icons
+    /// in the rows, the chosen row in the game's orange, a slider and a button from its UI. Where
+    /// the art cannot be had, plain fills stand in.
+    /// </summary>
     private void Draw(Player player)
     {
         float scale = Mathf.Max(0.5f, Screen.height / 1080f);
@@ -246,27 +252,41 @@ internal sealed class Palette
 
         float x = (Screen.width / scale - Width) / 2f;
         int rows = Math.Min(VisibleRows, Math.Max(1, _results.Count));
-        var panel = new Rect(x, Top, Width, 60f + rows * RowHeight + 118f);
-        GUI.Box(panel, GUIContent.none, Skin.Box);
+        var panel = new Rect(x, Top, Width, rows * RowHeight + 244f);
+        if (!UiArt.Sliced(panel, "woodpanel_settings", Color.white))
+        {
+            GUI.Box(panel, GUIContent.none, Skin.Box);
+        }
 
-        DrawField(new Rect(x + 12f, Top + 12f, Width - 24f, 36f));
-        DrawRows(new Rect(x + 12f, Top + 56f, Width - 24f, rows * RowHeight), player);
+        float inner = x + Pad;
+        float width = Width - 2f * Pad;
+        GUI.Label(new Rect(inner, Top + 14f, width, 38f), "Rummage", Skin.Title);
+        DrawField(new Rect(inner, Top + 58f, width, 38f));
+        float y = Top + 104f;
+        DrawRows(new Rect(inner, y, width, rows * RowHeight), player);
         if (!IsOpen)
         {
             GUI.matrix = matrix;
             return;
         }
 
-        GUI.Label(new Rect(x + 14f, panel.yMax - 110f, Width - 28f, 28f), PartsOf(Chosen), Skin.Hint);
-        DrawCount(new Rect(x + 12f, panel.yMax - 76f, Width - 24f, 34f), player);
-        GUI.Label(new Rect(x + 14f, panel.yMax - 36f, Width - 28f, 26f),
-            "Enter take · Tab complete · ↑↓ choose · Esc close · type a number for the count", Skin.Hint);
+        y += rows * RowHeight + 8f;
+        GUI.Label(new Rect(inner + 4f, y, width - 8f, 26f), PartsOf(Chosen), Skin.DetailLeft);
+        y += 32f;
+        DrawCount(new Rect(inner, y, width, 36f), player);
+        y += 44f;
+        GUI.Label(new Rect(inner + 4f, y, width - 8f, 24f), "Enter take · Tab complete · ↑↓ choose · Esc close · type a number for the count", Skin.Hint);
 
         GUI.matrix = matrix;
     }
 
     private void DrawField(Rect area)
     {
+        if (!UiArt.Sliced(area, "text_field", Color.white))
+        {
+            GUI.DrawTexture(area, Skin.SunkenFill);
+        }
+
         GUI.SetNextControlName(FieldName);
         _text = GUI.TextField(area, _text, 80, Skin.Field);
         if (_focusFrames > 0)
@@ -308,9 +328,13 @@ internal sealed class Palette
             int index = _first + row;
             var entry = _results[index];
             var rect = new Rect(area.x, area.y + row * RowHeight, area.width, RowHeight);
-            if (index == _selected)
+            bool chosen = index == _selected;
+            if (chosen)
             {
-                GUI.DrawTexture(rect, Skin.SelectedFill);
+                if (!UiArt.Sliced(rect, "button_highlight", new Color(1f, 1f, 1f, 0.55f)))
+                {
+                    GUI.DrawTexture(rect, Skin.SelectedFill);
+                }
             }
             else if (rect.Contains(e.mousePosition))
             {
@@ -332,8 +356,11 @@ internal sealed class Palette
                 }
             }
 
-            GUI.Label(new Rect(rect.x + 8f, rect.y, rect.width * 0.62f, rect.height), entry.Shown, Skin.Name);
-            GUI.Label(new Rect(rect.x + rect.width * 0.55f, rect.y, rect.width * 0.45f - 8f, rect.height), Detail(entry), Skin.Detail);
+            var icon = entry == _contextEntry ? _context.Icon : _catalog.IconOf(entry);
+            UiArt.Icon(new Rect(rect.x + 6f, rect.y + 3f, RowHeight - 6f, RowHeight - 6f), icon);
+            float left = rect.x + RowHeight + 6f;
+            GUI.Label(new Rect(left, rect.y, rect.width * 0.6f, rect.height), entry.Shown, chosen ? Skin.Chosen : Skin.Name);
+            GUI.Label(new Rect(rect.x + rect.width * 0.5f, rect.y, rect.width * 0.5f - 8f, rect.height), Detail(entry), Skin.Detail);
         }
     }
 
@@ -352,18 +379,81 @@ internal sealed class Palette
         }
 
         int? typed = Query.Parse(_text).Count;
-        GUI.Label(new Rect(area.x, area.y, 70f, area.height), "Count", Skin.Name);
-        bool enabled = GUI.enabled;
-        GUI.enabled = typed == null;
-        _count = GUI.HorizontalSlider(new Rect(area.x + 76f, area.y + 12f, area.width - 300f, area.height), _count, 1f, MaxCount(chosen));
-        GUI.enabled = enabled;
-        GUI.Label(new Rect(area.xMax - 216f, area.y, 70f, area.height), CountFor(chosen).ToString("N0", CultureInfo.InvariantCulture), Skin.Name);
-        if (GUI.Button(new Rect(area.xMax - 140f, area.y, 140f, area.height), "Take", Skin.Button))
+        GUI.Label(new Rect(area.x + 4f, area.y, 70f, area.height), "Count", Skin.Name);
+        var track = new Rect(area.x + 80f, area.y + 10f, area.width - 320f, area.height - 20f);
+        _count = Slider(track, typed ?? _count, 1f, MaxCount(chosen), typed == null);
+        GUI.Label(new Rect(track.xMax + 12f, area.y, 80f, area.height), CountFor(chosen).ToString("N0", CultureInfo.InvariantCulture), Skin.Name);
+        if (Button(new Rect(area.xMax - 150f, area.y - 2f, 150f, area.height + 4f), "Take"))
         {
             Take(player);
         }
     }
 
+    /// <summary>A slider in the game's look: a sunken track, an orange fill and a small button for the handle.</summary>
+    private static float Slider(Rect track, float value, float min, float max, bool enabled)
+    {
+        int id = GUIUtility.GetControlID(FocusType.Passive);
+        var e = Event.current;
+        float span = Mathf.Max(0.0001f, max - min);
+        if (enabled)
+        {
+            switch (e.GetTypeForControl(id))
+            {
+                case EventType.MouseDown when track.Contains(e.mousePosition):
+                    GUIUtility.hotControl = id;
+                    value = min + Mathf.Clamp01((e.mousePosition.x - track.x) / track.width) * span;
+                    e.Use();
+                    break;
+                case EventType.MouseDrag when GUIUtility.hotControl == id:
+                    value = min + Mathf.Clamp01((e.mousePosition.x - track.x) / track.width) * span;
+                    e.Use();
+                    break;
+                case EventType.MouseUp when GUIUtility.hotControl == id:
+                    GUIUtility.hotControl = 0;
+                    e.Use();
+                    break;
+            }
+        }
+
+        float share = Mathf.Clamp01((value - min) / span);
+        if (!UiArt.Sliced(track, "text_field", Color.white))
+        {
+            GUI.DrawTexture(track, Skin.SunkenFill);
+        }
+
+        var fill = new Rect(track.x + 2f, track.y + 2f, Mathf.Max(0f, (track.width - 4f) * share), track.height - 4f);
+        var color = GUI.color;
+        GUI.color = enabled ? UiArt.Orange : new Color(0.6f, 0.6f, 0.6f, 1f);
+        GUI.DrawTexture(fill, Texture2D.whiteTexture);
+        GUI.color = color;
+
+        var handle = new Rect(track.x + track.width * share - 9f, track.y - 6f, 18f, track.height + 12f);
+        if (!UiArt.Sliced(handle, "button_small", Color.white))
+        {
+            GUI.DrawTexture(handle, Skin.SelectedFill);
+        }
+
+        return value;
+    }
+
+    /// <summary>A button in the game's look; true when clicked.</summary>
+    private static bool Button(Rect area, string label)
+    {
+        bool over = area.Contains(Event.current.mousePosition);
+        if (!UiArt.Sliced(area, over ? "button_highlight" : "button", Color.white))
+        {
+            GUI.DrawTexture(area, over ? Skin.SelectedFill : Skin.SunkenFill);
+        }
+
+        GUI.Label(area, label, Skin.Button);
+        if (Event.current.type == EventType.MouseDown && over)
+        {
+            Event.current.Use();
+            return true;
+        }
+
+        return false;
+    }
     /// <summary>
     /// For the chosen entry: an item as carried and in the chests; a piece or recipe part by part,
     /// carried plus in the chests against what the count needs, short parts marked.

@@ -66,29 +66,39 @@ public class SummaryTests
     }
 
     [Fact]
-    public void WhileAPieceIsSelectedTheLineShowsYourBagAndWhatThePressWouldBring()
+    public void TheBuildPanelShowsYourBagAndWhatThePressWouldBring()
     {
         var plan = Plan(Inventory(Stack(Wood, 7)), false, [Part(Wood, 10), Part(Stone, 4), Part(Cores, 2)],
             Chest(1, 5, Stack(Wood, 50), Stack(Stone, 50, x: 1)));
 
-        Assert.Equal("Portal · in your bag: Wood 7/10 · Stone 0/4 · Surtling core 0/2 · J brings 3 Wood, 4 Stone · short: Surtling core",
-            Readout.Line("Portal", plan, "J", Shown));
+        Assert.Equal(
+            "In your bag: <color=#FFA13C>Wood 7/10</color> · <color=#FFA13C>Stone 0/4</color> · <color=#E8604C>Surtling core 0/2</color>\n"
+            + "J brings 3 Wood, 4 Stone · short: Surtling core",
+            Readout.Panel(plan, 1, "J", Shown));
     }
 
     [Fact]
-    public void WithEverythingCarriedTheLineSaysSo()
+    public void ForMoreThanOneThePanelSaysHowMany()
+    {
+        var plan = Plan(Inventory(Stack(Wood, 10)), false, [Part(Wood, 20)], Chest(1, 5, Stack(Wood, 50)));
+
+        Assert.Equal("For 2 · in your bag: <color=#FFA13C>Wood 10/20</color>\nJ brings 10 Wood", Readout.Panel(plan, 2, "J", Shown));
+    }
+
+    [Fact]
+    public void WithEverythingCarriedThePanelSaysSo()
     {
         var plan = Plan(Inventory(Stack(Wood, 10)), false, [Part(Wood, 10)], Chest(1, 5, Stack(Wood, 50)));
 
-        Assert.Equal("Portal · in your bag: Wood 10/10 · you carry it all", Readout.Line("Portal", plan, "J", Shown));
+        Assert.Equal("In your bag: Wood 10/10\nYou carry it all", Readout.Panel(plan, 1, "J", Shown));
     }
 
     [Fact]
-    public void WhenThePressWouldBringNothingTheLineSaysWhatIsShort()
+    public void WhenThePressWouldBringNothingThePanelSaysWhatIsShort()
     {
         var plan = Plan(Inventory(), false, [Part(Cores, 2)]);
 
-        Assert.Equal("Portal · in your bag: Surtling core 0/2 · J brings nothing · short: Surtling core", Readout.Line("Portal", plan, "J", Shown));
+        Assert.Equal("In your bag: <color=#E8604C>Surtling core 0/2</color>\nJ brings nothing · short: Surtling core", Readout.Panel(plan, 1, "J", Shown));
     }
 
     [Fact]

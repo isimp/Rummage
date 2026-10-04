@@ -8,7 +8,7 @@ Most of Rummage was written by Claude Code (Anthropic), which did the heavy lift
 
 ## Using it
 
-Each press brings enough for one more: one more piece than what you carry already pays for, or for a recipe one more round of the amount the crafting tab is set to make. A part the chests have run out of does not stop the count, so the other parts keep piling up while that one stays short. After a press, a line shows each part as what you now carry of what it needs, such as "Portal: Fine wood 10/10 (+10) · Surtling core 0/2". While building, a line near the bottom of the screen shows what you carry for the selected piece and what the key would bring. A stack is filled only with items of exactly its kind, and nothing goes anywhere else in your inventory. A recipe is taken for as many crafts as the crafting tab is set to make, and an upgrade for the next quality level. A recipe that needs only one of its ingredients takes the one you carry already, else the first the chests hold enough of.
+Each press brings enough for one more: one more piece than what you carry already pays for, or for a recipe one more round of the amount the crafting tab is set to make. A part the chests have run out of does not stop the count, so the other parts keep piling up while that one stays short. After a press, a line shows each part as what you now carry of what it needs, such as "Portal: Fine wood 10/10 (+10) · Surtling core 0/2". While building, the game's build panel shows under the piece what you carry of each part, in orange what the key would bring and in red what cannot be had. A stack is filled only with items of exactly its kind, and nothing goes anywhere else in your inventory. A recipe is taken for as many crafts as the crafting tab is set to make, and an upgrade for the next quality level. A recipe that needs only one of its ingredients takes the one you carry already, else the first the chests hold enough of.
 
 In the search box, type part of a name and the best matches come first. The arrow keys choose, Tab completes the name, Enter takes and Escape closes. A number before or after the name sets the count, as in "40 wood" or "portal 2", or use the slider. Items show how many the chests can give, pieces and recipes how many of them you could pay for. Under the list, the chosen entry shows what you carry and what the chests hold of each part against the count, with any part that falls short marked. Shift with J opens the search box on the recipe or piece in front of you instead of taking it straight away.
 
@@ -24,7 +24,7 @@ Each take goes through the same step as dragging an item out of a chest by hand.
 
 ## Settings
 
-The key and the building line (on or off, and how high it sits) are in `BepInEx/config/isimp.Rummage.cfg`. Alt with the same key is left to other mods.
+The key and the lines in the build panel (on or off) are in `BepInEx/config/isimp.Rummage.cfg`. Alt with the same key is left to other mods.
 
 Tested with AzuCraftyBoxes 1.8.27, MultiUserChest 0.6.2, ExtraSlots 1.2.16 and AzuAntiArthriticCrafting 2.1.11.
 

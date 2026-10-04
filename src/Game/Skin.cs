@@ -34,6 +34,14 @@ internal static class Skin
 
     public static GUIStyle Line { get; private set; }
 
+    public static GUIStyle Title { get; private set; }
+
+    public static GUIStyle Chosen { get; private set; }
+
+    public static GUIStyle DetailLeft { get; private set; }
+
+    public static Texture2D SunkenFill { get; private set; }
+
     public static GUIStyle Button { get; private set; }
 
     public static Texture2D SelectedFill { get; private set; }
@@ -54,7 +62,7 @@ internal static class Skin
 
         Build();
         var sample = new GUIContent(Sample);
-        foreach (var style in new[] { Field, Name, Detail, Hint, Button, Line })
+        foreach (var style in new[] { Field, Name, Detail, Hint, Button, Line, Chosen, Title })
         {
             style.CalcSize(sample);
         }
@@ -69,22 +77,28 @@ internal static class Skin
             return;
         }
 
-        var font = GameFont();
+        var font = GameFont("AveriaSerifLibre-Regular");
+        var heading = GameFont("Norsebold") ?? GameFont("Norse") ?? font;
         Box = new GUIStyle(GUI.skin.box) { normal = { background = Fill(Back) }, border = new RectOffset(0, 0, 0, 0) };
         Field = new GUIStyle(GUI.skin.textField)
         {
             font = font,
             fontSize = 20,
             padding = new RectOffset(10, 10, 6, 6),
-            normal = { background = Fill(Sunken), textColor = Text },
-            focused = { background = Fill(Sunken), textColor = Text },
-            hover = { background = Fill(Sunken), textColor = Text },
+            normal = { background = null, textColor = Text },
+            focused = { background = null, textColor = Text },
+            hover = { background = null, textColor = Text },
+            active = { background = null, textColor = Text },
         };
+        SunkenFill = Fill(Sunken);
         Name = Label(font, 18, Text, TextAnchor.MiddleLeft);
-        Detail = Label(font, 15, Faint, TextAnchor.MiddleRight);
+        Detail = Label(font, 15, UiArt.Beige, TextAnchor.MiddleRight);
+        Chosen = Label(font, 18, UiArt.Orange, TextAnchor.MiddleLeft);
+        DetailLeft = Label(font, 15, UiArt.Beige, TextAnchor.MiddleLeft);
+        Title = Label(heading, 30, UiArt.Orange, TextAnchor.MiddleCenter);
         Hint = Label(font, 14, Faint, TextAnchor.MiddleLeft);
         Line = Label(font, 16, Text, TextAnchor.MiddleCenter);
-        Button = new GUIStyle(GUI.skin.button) { font = font, fontSize = 17 };
+        Button = Label(font, 18, UiArt.Orange, TextAnchor.MiddleCenter);
         SelectedFill = Fill(Selected);
         HoverFill = Fill(Hover);
         _built = true;
@@ -93,11 +107,11 @@ internal static class Skin
     private static GUIStyle Label(Font font, int size, Color color, TextAnchor anchor)
         => new(GUI.skin.label) { font = font, fontSize = size, alignment = anchor, normal = { textColor = color }, wordWrap = false, clipping = TextClipping.Clip };
 
-    private static Font GameFont()
+    private static Font GameFont(string name)
     {
         foreach (var font in Resources.FindObjectsOfTypeAll<Font>())
         {
-            if (font && font.name.Equals("AveriaSerifLibre-Regular", StringComparison.OrdinalIgnoreCase))
+            if (font && font.name.Equals(name, StringComparison.OrdinalIgnoreCase))
             {
                 return font;
             }

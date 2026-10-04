@@ -9,9 +9,10 @@ namespace Rummage.Game;
 /// <summary>What a grab is for: what one of it costs, and how many.</summary>
 internal sealed class Target
 {
-    public Target(string shown, EntryKind kind, IReadOnlyList<(string Name, int Amount)> cost, int count, bool anyOf, ItemStack into = null)
+    public Target(string shown, EntryKind kind, IReadOnlyList<(string Name, int Amount)> cost, int count, bool anyOf, ItemStack into = null, UnityEngine.Sprite icon = null)
     {
         Into = into;
+        Icon = icon ? icon : (cost.Count > 0 ? UiArt.ItemIcon(cost[0].Name) : null);
         Shown = shown;
         Kind = kind;
         Cost = cost;
@@ -34,9 +35,12 @@ internal sealed class Target
     /// <summary>For a top-up, the carried stack to fill; otherwise none.</summary>
     public ItemStack Into { get; }
 
+    /// <summary>What the search box shows beside it.</summary>
+    public UnityEngine.Sprite Icon { get; }
+
     public string Label => Into != null ? $"{Shown} to a full stack" : Count > 1 ? $"{Shown} x{Count}" : Shown;
 
-    public Target WithCount(int count) => new(Shown, Kind, Cost, count, AnyOf, Into);
+    public Target WithCount(int count) => new(Shown, Kind, Cost, count, AnyOf, Into, Icon);
 
     /// <summary>
     /// What to ask the chests for. A piece or recipe is a total to carry, so what the inventory
@@ -67,7 +71,7 @@ internal sealed class Target
             }
         }
 
-        return new Target(Text.Shown(piece.m_name), EntryKind.Piece, cost, count, anyOf: false);
+        return new Target(Text.Shown(piece.m_name), EntryKind.Piece, cost, count, anyOf: false, icon: piece.m_icon);
     }
 
     /// <summary>
@@ -93,7 +97,8 @@ internal sealed class Target
             }
         }
 
-        return new Target(Text.Shown(recipe.m_item.m_itemData.m_shared.m_name), EntryKind.Recipe, cost, count, recipe.m_requireOnlyOneIngredient);
+        return new Target(Text.Shown(recipe.m_item.m_itemData.m_shared.m_name), EntryKind.Recipe, cost, count, recipe.m_requireOnlyOneIngredient,
+            icon: recipe.m_item.m_itemData.GetIcon());
     }
 }
 
