@@ -534,9 +534,11 @@ internal sealed class Tests
         _checks.Check(Grabber.LastLines.Count == 2 && Grabber.LastLines[1].StartsWith("Short: ", StringComparison.Ordinal) && !lines.Contains(" short: "),
             "with Messages Short a grab names what is short without the reasons", lines);
         Settings.Messages.Value = Messages.Off;
+        // The grab above emptied the test chests of wood.
         _site.ClearBag();
+        _site.Refill();
         yield return Grab(Target.ForItem(Site.Wood, Text.Shown(Site.Wood), 5));
-        _checks.Check(Grabber.LastLines.Count == 0 && Site.Count(_site.Bag, Site.Wood) == 5, "with Messages Off it still takes and says nothing", string.Join(" | ", Grabber.LastLines));
+        _checks.Check(Grabber.LastLines.Count == 0 && Site.Count(_site.Bag, Site.Wood) == 5, "with Messages Off it still takes and says nothing", $"{Site.Count(_site.Bag, Site.Wood)} wood; {string.Join(" | ", Grabber.LastLines)}");
         Settings.Messages.Value = Messages.Full;
     }
 
