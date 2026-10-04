@@ -32,7 +32,7 @@ internal sealed class BuildReadout
         _state = 0;
     }
 
-    public void Tick(Player player, float now, string key, bool shown)
+    public void Tick(Player player, float now, string key, BuildBox mode)
     {
         if (now < _next)
         {
@@ -40,7 +40,7 @@ internal sealed class BuildReadout
         }
 
         _next = now + Every;
-        var piece = shown && player && !player.IsDead() && CraftyLink.Ready && player.InPlaceMode() ? Context.PieceInView(player) : null;
+        var piece = mode != BuildBox.Never && player && !player.IsDead() && CraftyLink.Ready && player.InPlaceMode() ? Context.PieceInView(player) : null;
         if (!piece)
         {
             Hide();
@@ -48,7 +48,7 @@ internal sealed class BuildReadout
         }
 
         var nearby = CraftyLink.NearbyChests(player);
-        int state = State(piece, nearby, player, key);
+        int state = State(piece, nearby, player, key) * 31 + (int)mode;
         if (state == _state && _line && _line.transform.parent.gameObject.activeSelf)
         {
             Counts = (Counts.Worked, Counts.Skipped + 1);
@@ -66,6 +66,13 @@ internal sealed class BuildReadout
         }
 
         var plan = Planner.Make(target.Wants(), scene.Sources, scene.Bag, CraftyLink.LeaveOne);
+        var forOne = target.Count == 1 ? plan : Planner.Make(target.WithCount(1).Wants(), scene.Sources, scene.Bag, CraftyLink.LeaveOne);
+        if (!Readout.Shows(forOne, mode))
+        {
+            Hide();
+            return;
+        }
+
         if (Line() is TMP_Text line)
         {
             string text = Readout.Panel(plan, target.Count, key, Game.Text.Shown, part => line.GetPreferredValues(part).x);

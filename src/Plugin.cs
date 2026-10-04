@@ -1,11 +1,17 @@
 using BepInEx;
-using BepInEx.Configuration;
-using BepInEx.Logging;
 using HarmonyLib;
 using Rummage.Game;
 using UnityEngine;
 
 namespace Rummage;
+
+/// <summary>What a press of the key came to, for the self-test.</summary>
+internal enum Pressed
+{
+    Took,
+    Opened,
+    Nothing,
+}
 
 [BepInPlugin(Guid, Name, Version)]
 [BepInDependency(CraftyLink.Guid, CraftyLink.TestedVersion)]
@@ -22,13 +28,11 @@ public sealed class Plugin : BaseUnityPlugin
 
     private readonly Grabber _grabber = new();
     private readonly BuildReadout _readout = new();
-    private ConfigEntry<bool> _showLine;
     private Palette _palette;
     private PaletteView _view;
-    private ConfigEntry<KeyCode> _key;
     private Harmony _harmony;
 
-    internal static ManualLogSource Log { get; private set; }
+    internal static BepInEx.Logging.ManualLogSource Log { get; private set; }
 
     internal static Plugin Instance { get; private set; }
 
@@ -42,16 +46,11 @@ public sealed class Plugin : BaseUnityPlugin
     {
         Log = Logger;
         Instance = this;
+        Settings.Bind(Config);
         _palette = new Palette(_grabber);
         _view = gameObject.AddComponent<PaletteView>();
         _view.Palette = _palette;
         _view.enabled = false;
-        _key = Config.Bind("Keys", "Key", KeyCode.J,
-            "Takes what the thing in front of you needs from the chests around you: the recipe selected in the crafting tab, "
-            + "the build piece under the cursor in the build menu, or the piece you are placing. With nothing of the sort, it opens the search box; "
-            + "with Shift, it opens the search box starting from that thing. Ignored while Alt is held, so Alt with the same key stays free for other mods.");
-        _showLine = Config.Bind("Display", "BuildLine", true,
-            "While building, shows a box beside the game's build panel with what you carry of each part of the piece, what the key would bring and what would still be short.");
         _harmony = new Harmony(Guid);
         _harmony.PatchAll(typeof(Plugin).Assembly);
     }
@@ -70,47 +69,70 @@ public sealed class Plugin : BaseUnityPlugin
     {
         _grabber.Tick(Time.time);
         Highlighter.Tick(Time.time);
-        _readout.Tick(Player.m_localPlayer, Time.time, _key.Value.ToString(), _showLine.Value);
+        _readout.Tick(Player.m_localPlayer, Time.time, Settings.Key.Value.ToString(), Settings.TakeForPieces.Value ? Settings.BuildBox.Value : Core.BuildBox.Never);
         bool drawing = Palette.IsOpen || (!Skin.Warmed && Player.m_localPlayer);
         if (_view.enabled != drawing)
         {
             _view.enabled = drawing;
         }
 
-        if (Palette.IsOpen || !Input.GetKeyDown(_key.Value) || Held(KeyCode.LeftAlt, KeyCode.RightAlt, KeyCode.AltGr))
+        if (Palette.IsOpen || Held(KeyCode.LeftAlt, KeyCode.RightAlt, KeyCode.AltGr))
         {
             return;
         }
 
-        var player = Player.m_localPlayer;
+        var searchKey = Settings.SearchKey.Value;
+        if (searchKey != KeyCode.None && Input.GetKeyDown(searchKey))
+        {
+            Press(Player.m_localPlayer, search: true);
+        }
+        else if (Input.GetKeyDown(Settings.Key.Value))
+        {
+            Press(Player.m_localPlayer, search: ModifierHeld());
+        }
+    }
+
+    /// <summary>
+    /// A press of the key: takes for the thing in front of the player, or opens the search box,
+    /// starting from that thing, when <paramref name="search"/> asks for it or there is nothing to
+    /// take for and the settings let the key open it.
+    /// </summary>
+    internal Pressed Press(Player player, bool search)
+    {
         if (!Guard.MayAct(player))
         {
-            return;
+            return Pressed.Nothing;
         }
 
         if (!CraftyLink.Ready)
         {
             Notice.Say(player, CraftyLink.Problem);
-            return;
+            return Pressed.Nothing;
         }
 
         try
         {
             var target = Context.Find(player);
-            if (target != null && !Held(KeyCode.LeftShift, KeyCode.RightShift))
+            if (target != null && !search)
             {
                 _grabber.Grab(player, target, Time.time);
                 _readout.Refresh();
+                return Pressed.Took;
             }
-            else
+
+            if (target == null && !search && !Settings.KeyAloneOpensSearch.Value)
             {
-                _palette.Open(player, target);
+                return Pressed.Nothing;
             }
+
+            _palette.Open(player, target);
+            return Pressed.Opened;
         }
         catch (System.Exception e)
         {
             Log.LogError($"The key failed: {e}");
             Notice.Say(player, "Rummage ran into an error; see the log");
+            return Pressed.Nothing;
         }
     }
 
@@ -124,6 +146,13 @@ public sealed class Plugin : BaseUnityPlugin
         _readout.Remove();
         _harmony?.UnpatchSelf();
     }
+
+    private static bool ModifierHeld() => Settings.Modifier.Value switch
+    {
+        SearchModifier.Shift => Held(KeyCode.LeftShift, KeyCode.RightShift),
+        SearchModifier.Control => Held(KeyCode.LeftControl, KeyCode.RightControl),
+        _ => false,
+    };
 
     private static bool Held(params KeyCode[] keys)
     {

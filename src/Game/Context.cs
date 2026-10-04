@@ -38,7 +38,10 @@ internal sealed class Target
     /// <summary>What the search box shows beside it.</summary>
     public UnityEngine.Sprite Icon { get; }
 
-    public string Label => Into != null ? $"{Shown} to a full stack" : Count > 1 ? $"{Shown} x{Count}" : Shown;
+    /// <summary>Whether this tops a stack up to a full one.</summary>
+    public bool FillsStack => Into != null && Count >= Into.MaxStack - Into.Count;
+
+    public string Label => FillsStack ? $"{Shown} to a full stack" : Count > 1 ? $"{Shown} x{Count}" : Shown;
 
     public Target WithCount(int count) => new(Shown, Kind, Cost, count, AnyOf, Into, Icon);
 
@@ -51,9 +54,9 @@ internal sealed class Target
     public Want Want((string Name, int Amount) part)
         => new(part.Name, part.Amount * Count, countCarried: Kind != EntryKind.Item, minWorldLevel: global::Game.m_worldLevel);
 
-    /// <summary>Fills a carried stack to a full stack.</summary>
-    public static Target ForTopUp(ItemStack held)
-        => new(Text.Shown(held.Name), EntryKind.Item, [(held.Name, 1)], held.MaxStack - held.Count, anyOf: false, held);
+    /// <summary>Fills a carried stack, by at most <paramref name="atMost"/> when it is above zero, else to a full stack.</summary>
+    public static Target ForTopUp(ItemStack held, int atMost = 0)
+        => new(Text.Shown(held.Name), EntryKind.Item, [(held.Name, 1)], Core.Want.TopUp(held, atMost).Count, anyOf: false, held);
 
     public static Target ForItem(string name, string shown, int count)
         => new(shown, EntryKind.Item, [(name, 1)], count, anyOf: false);
@@ -120,23 +123,26 @@ internal static class Context
     /// </summary>
     public static Target Find(Player player) => Find(player, hovered: true);
 
-    /// <summary>As <see cref="Find(Player)"/>; the self-test leaves out the stack under the cursor, which it cannot place.</summary>
+    /// <summary>
+    /// As <see cref="Find(Player)"/>; the self-test leaves out the stack under the cursor, which it
+    /// cannot place. What the settings turn off is passed over.
+    /// </summary>
     internal static Target Find(Player player, bool hovered)
     {
         if (InventoryGui.IsVisible() && InventoryGui.instance)
         {
-            if (hovered && HoveredStack(player) is ItemDrop.ItemData held)
+            if (hovered && Settings.TopUpStacks.Value && HoveredStack(player) is ItemDrop.ItemData held)
             {
-                return Target.ForTopUp(Scene.StackOf(held));
+                return Target.ForTopUp(Scene.StackOf(held), Settings.TopUpAmount.Value);
             }
 
-            if (Recipe(player) is Target recipe)
+            if (Settings.TakeForRecipes.Value && Recipe(player) is Target recipe)
             {
                 return OneMore(recipe, player);
             }
         }
 
-        return PieceTarget(player);
+        return Settings.TakeForPieces.Value ? PieceTarget(player) : null;
     }
 
     /// <summary>The build piece under the cursor in the build menu, else the one being placed, for the next press.</summary>

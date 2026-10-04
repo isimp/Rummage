@@ -140,6 +140,27 @@ internal readonly struct Query : IEquatable<Query>
 /// <summary>Orders what the search box offers for the text typed.</summary>
 internal static class Search
 {
+    /// <summary>The hint in the empty search field, naming what the search box lists as set.</summary>
+    public static string Prompt(bool items, bool pieces, bool recipes)
+    {
+        string yours = (pieces, recipes) switch
+        {
+            (true, true) => "your pieces and recipes",
+            (true, false) => "your pieces",
+            (false, true) => "your recipes",
+            _ => null,
+        };
+
+        return (items, yours) switch
+        {
+            (true, null) => "Search the chests",
+            (true, _) when pieces && recipes => $"Search the chests, {yours}",
+            (true, _) => $"Search the chests and {yours}",
+            (false, null) => "Nothing to search: the Search settings list nothing",
+            _ => $"Search {yours}",
+        };
+    }
+
     /// <summary>
     /// The whole name first, then names starting with the text, then a word in the name starting
     /// with it, then the text anywhere in the name, then its letters in order. Among equal matches

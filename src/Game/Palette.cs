@@ -15,7 +15,7 @@ namespace Rummage.Game;
 internal sealed class Palette
 {
     private const string FieldName = "RummageSearch";
-    private const int VisibleRows = 10;
+    private static int VisibleRows => Settings.Rows.Value;
     private const float Width = 640f;
     private const float RowHeight = 32f;
     private const float Pad = 30f;
@@ -322,7 +322,7 @@ internal sealed class Palette
     /// </summary>
     private void Draw(Player player)
     {
-        float scale = Mathf.Max(0.5f, Screen.height / 1080f);
+        float scale = Mathf.Max(0.5f, Screen.height / 1080f) * Settings.Scale.Value;
         var matrix = GUI.matrix;
         GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
 
@@ -381,7 +381,7 @@ internal sealed class Palette
 
         if (_text.Length == 0)
         {
-            GUI.Label(new Rect(area.x + 12f, area.y, area.width, area.height), "Search the chests, your pieces and recipes", Skin.Hint);
+            GUI.Label(new Rect(area.x + 12f, area.y, area.width, area.height), Search.Prompt(Settings.ShowItems.Value, Settings.ShowPieces.Value, Settings.ShowRecipes.Value), Skin.Hint);
         }
     }
 
@@ -396,7 +396,8 @@ internal sealed class Palette
 
         if (_results.Count == 0)
         {
-            GUI.Label(area, Parsed.Text.Length == 0 ? "The chests nearby are empty" : "Nothing found", Skin.Hint);
+            string empty = Settings.ShowItems.Value ? "The chests nearby are empty" : "Type a name to search";
+            GUI.Label(area, Parsed.Text.Length == 0 ? empty : "Nothing found", Skin.Hint);
             return;
         }
 
@@ -595,7 +596,7 @@ internal sealed class Palette
             {
                 EntryKind.Recipe => "selected recipe",
                 EntryKind.Piece => "selected piece",
-                _ => "your stack, to a full stack",
+                _ => _context.FillsStack ? "your stack, to a full stack" : "your stack",
             };
         }
 

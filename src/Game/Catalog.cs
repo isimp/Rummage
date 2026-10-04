@@ -46,17 +46,25 @@ internal sealed class Catalog
             catalog._stackSizes[stack.Name] = stack.MaxStack;
         }
 
-        var held = Held(player, scene);
-        foreach (string name in held.Keys.Union(stock.Keys))
+        if (Settings.ShowItems.Value)
         {
-            int takeable = stock.TryGetValue(name, out int t) ? t : 0;
-            catalog.Add(new Entry(name, Text.Shown(name), EntryKind.Item, takeable, held.TryGetValue(name, out int h) ? h : 0),
-                Target.ForItem(name, Text.Shown(name), 1));
+            var held = Held(player, scene);
+            foreach (string name in held.Keys.Union(stock.Keys))
+            {
+                int takeable = stock.TryGetValue(name, out int t) ? t : 0;
+                catalog.Add(new Entry(name, Text.Shown(name), EntryKind.Item, takeable, held.TryGetValue(name, out int h) ? h : 0),
+                    Target.ForItem(name, Text.Shown(name), 1));
+            }
         }
 
-        foreach (var (key, unit) in Costed(player))
+        bool pieces = Settings.ShowPieces.Value;
+        bool recipes = Settings.ShowRecipes.Value;
+        foreach (var (key, unit) in pieces || recipes ? Costed(player) : [])
         {
-            catalog.Guarded(key, () => catalog.AddCosted(unit, key, carried, stock));
+            if (unit.Kind == EntryKind.Piece ? pieces : recipes)
+            {
+                catalog.Guarded(key, () => catalog.AddCosted(unit, key, carried, stock));
+            }
         }
 
         return catalog;

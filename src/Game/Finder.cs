@@ -6,15 +6,16 @@ using UnityEngine;
 namespace Rummage.Game;
 
 /// <summary>
-/// Finds where something is without taking it: the chests within 50 m holding an item, or for a
-/// piece or recipe any of its parts, light up for a few seconds and a line per item says how many
-/// there are, in how many chests and how far the nearest is. It looks in the chests AzuCraftyBoxes
+/// Finds where something is without taking it: the chests within the find radius holding an item,
+/// or for a piece or recipe any of its parts, light up for a few seconds and a line per item says
+/// how many there are, in how many chests and how far the nearest is. It looks in the chests AzuCraftyBoxes
 /// has registered, the ones the player may use and ones someone else has open, and never in
 /// another player's private chest.
 /// </summary>
 internal static class Finder
 {
-    public const float Radius = 50f;
+    /// <summary>How far finding, and the search list, look for chests.</summary>
+    public static float Radius => Settings.FindRadius.Value;
 
     private const float LitFor = 6f;
 

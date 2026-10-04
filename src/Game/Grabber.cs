@@ -69,7 +69,7 @@ internal sealed class Grabber
             Plugin.Log.LogWarning($"{_waiting.Unanswered.Count} take(s) had no answer from the chest's game within {AnswerTimeout} s.");
         }
 
-        LastArrivals = Report.Arrivals(_arrivals, Text.Shown);
+        LastArrivals = Report.Arrivals(_arrivals, Text.Shown, Settings.Messages.Value);
         Notice.Say(_waitingPlayer, LastArrivals);
 
         _arrivals.Clear();
@@ -134,7 +134,7 @@ internal sealed class Grabber
             Highlighter.Light(chest, 2f);
         }
 
-        LastLines = Report.Lines(target.Label, plan, new Done(took, asked, changed, refused), Text.Shown, MucLink.Ready);
+        LastLines = Report.Lines(target.Label, plan, new Done(took, asked, changed, refused), Text.Shown, MucLink.Ready, Settings.Messages.Value);
         Notice.Say(player, LastLines);
     }
 

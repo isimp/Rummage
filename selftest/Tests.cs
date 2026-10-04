@@ -107,6 +107,8 @@ internal sealed class Tests
             yield break;
         }
 
+        // The test expects the settings as they ship; the player's own are put back at the end.
+        var restoreSettings = Settings.UseDefaults();
         _site = new Site(_player, _checks);
         bool built = Guarded("building the test site", _site.Build);
         if (built)
@@ -134,6 +136,7 @@ internal sealed class Tests
             yield return Part("a recipe in the crafting tab, pressed twice", Recipe());
             yield return Part("filling a stack", TopUp());
             yield return Part("the search box", SearchBox());
+            yield return Part("the settings", SettingsChange());
             yield return Part("a chest held by a game that never answers", NeverAnswers());
             yield return Part("a chest held by another player's game", AnotherPlayer());
             yield return Part("how long things take", Timings());
@@ -141,6 +144,7 @@ internal sealed class Tests
 
         _checks.Start("putting everything back");
         Guarded("putting everything back", _site.TearDown);
+        Guarded("putting the player's settings back", restoreSettings);
         _checks.Summary();
         _player.Message(MessageHud.MessageType.Center, _checks.Failed == 0 ? "Rummage self-test passed" : $"Rummage self-test: {_checks.Failed} failed, see the log");
     }
@@ -300,34 +304,39 @@ internal sealed class Tests
         _checks.Check(Grabber.LastLines.Any(l => l.Contains("no room left")), "the report says the inventory is full", string.Join(" | ", Grabber.LastLines));
     }
 
-    private IEnumerator Recipe()
+    /// <summary>Opens the inventory with the hammer's recipe selected in the crafting tab; null when it is not there.</summary>
+    private Recipe SelectHammerRecipe()
     {
         var gui = InventoryGui.instance;
-        gui.Show(null);
-        yield return Frames(10);
         AccessTools.Method(typeof(InventoryGui), "UpdateCraftingPanel").Invoke(gui, [false]);
         var recipes = AccessTools.Field(typeof(InventoryGui), "m_availableRecipes").GetValue(gui) as IList;
-        int index = -1;
-        Recipe recipe = null;
         for (int i = 0; recipes != null && i < recipes.Count; i++)
         {
             var pair = recipes[i];
             var candidate = pair.GetType().GetProperty("Recipe").GetValue(pair) as Recipe;
             if (candidate && candidate.m_item.m_itemData.m_shared.m_name == "$item_hammer" && pair.GetType().GetProperty("ItemData").GetValue(pair) == null)
             {
-                (index, recipe) = (i, candidate);
-                break;
+                AccessTools.Method(typeof(InventoryGui), "SetRecipe").Invoke(gui, [i, false]);
+                return candidate;
             }
         }
 
-        if (index < 0)
+        return null;
+    }
+
+    private IEnumerator Recipe()
+    {
+        var gui = InventoryGui.instance;
+        gui.Show(null);
+        yield return Frames(10);
+        var recipe = SelectHammerRecipe();
+        if (!recipe)
         {
             _checks.Skip("the hammer's recipe is not in the crafting tab here");
             gui.Hide();
             yield break;
         }
 
-        AccessTools.Method(typeof(InventoryGui), "SetRecipe").Invoke(gui, [index, false]);
         int step = CraftAmountLink.Current();
         for (int press = 1; press <= 2; press++)
         {
@@ -424,6 +433,111 @@ internal sealed class Tests
         _checks.Check(!TextInput.IsVisible(), "a few frames later the keys are the game's again");
         yield return Idle();
         _checks.Check(Site.Count(_site.Bag, Site.Wood) - before == 40, "40 wood arrived", (Site.Count(_site.Bag, Site.Wood) - before).ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>
+    /// What the settings turn off or change, each through the same entry points as the key and the
+    /// search box, and each set back to its default afterwards.
+    /// </summary>
+    private IEnumerator SettingsChange()
+    {
+        string KindsListed() => string.Join(", ", Catalog.Build(_player, Scene.Read(_player)).Entries.Select(e => e.Kind).Distinct().OrderBy(k => k));
+        foreach (var (entry, kind) in new[] { (Settings.ShowItems, EntryKind.Item), (Settings.ShowPieces, EntryKind.Piece), (Settings.ShowRecipes, EntryKind.Recipe) })
+        {
+            entry.Value = false;
+            var kinds = Catalog.Build(_player, Scene.Read(_player)).Entries.Select(e => e.Kind).ToHashSet();
+            _checks.Check(!kinds.Contains(kind) && kinds.Count == 2, $"with {entry.Definition.Key} off the search box lists no {kind} entries, and the rest still", KindsListed());
+            entry.Value = true;
+        }
+
+        // Nothing in front of the player here: no inventory open, nothing being placed.
+        _checks.Check(Plugin.Instance.Press(_player, search: false) == Pressed.Opened && Palette.IsOpen, "the key with nothing in front opens the search box");
+        Plugin.Instance.Palette.Close();
+        // The keys stay held for two frames after the box closes, and a press is refused meanwhile.
+        yield return Frames(4);
+        Settings.KeyAloneOpensSearch.Value = false;
+        _checks.Check(Plugin.Instance.Press(_player, search: false) == Pressed.Nothing && !Palette.IsOpen, "with KeyAloneOpensSearch off it does nothing there");
+        _checks.Check(Plugin.Instance.Press(_player, search: true) == Pressed.Opened && Palette.IsOpen, "the search modifier still opens it");
+        Plugin.Instance.Palette.Close();
+        Settings.KeyAloneOpensSearch.Value = true;
+        yield return Frames(4);
+
+        var piece = ZNetScene.instance.GetPrefab("piece_workbench")?.GetComponent<Piece>();
+        var hammer = Site.Make("Hammer", 1);
+        _site.Bag.AddItem(hammer);
+        _player.EquipItem(hammer, triggerEquipEffects: false);
+        yield return Until(() => _player.InPlaceMode(), 3f);
+        if (_player.InPlaceMode() && piece && _player.SetSelectedPiece(piece))
+        {
+            var box = Hud.instance && Hud.instance.m_buildHud ? Hud.instance.m_buildHud.transform.Find("Rummage") : null;
+            Settings.TakeForPieces.Value = false;
+            Plugin.Instance.BuildLine.Refresh();
+            yield return Frames(5);
+            box = box ? box : Hud.instance.m_buildHud.transform.Find("Rummage");
+            _checks.Check(Context.Find(_player, hovered: false) == null, "with TakeForPieces off the key is not for the piece being placed");
+            _checks.Check(!box || !box.gameObject.activeSelf, "and the build box does not show");
+            Settings.TakeForPieces.Value = true;
+
+            Settings.BuildBox.Value = BuildBox.UntilCarried;
+            Plugin.Instance.BuildLine.Refresh();
+            yield return Frames(5);
+            box = Hud.instance.m_buildHud.transform.Find("Rummage");
+            _checks.Check(box && box.gameObject.activeSelf, "with BuildBox UntilCarried the box shows while the workbench cannot be built");
+            int cost = piece.m_resources.Sum(r => r.m_amount);
+            _site.Bag.AddItem(Site.Make("Wood", cost));
+            Plugin.Instance.BuildLine.Refresh();
+            yield return Frames(5);
+            _checks.Check(box && !box.gameObject.activeSelf, "and hides once the inventory holds enough to build it", $"{Site.Count(_site.Bag, Site.Wood)} wood carried");
+            Settings.BuildBox.Value = BuildBox.Always;
+            Plugin.Instance.BuildLine.Refresh();
+            yield return Frames(5);
+            _checks.Check(box && box.gameObject.activeSelf, "with BuildBox Always it shows then too");
+        }
+        else
+        {
+            _checks.Skip("the hammer could not be taken up with the workbench selected");
+        }
+
+        _site.PutHandsBack();
+        _site.ClearBag();
+
+        var gui = InventoryGui.instance;
+        gui.Show(null);
+        yield return Frames(10);
+        if (SelectHammerRecipe())
+        {
+            Settings.TakeForRecipes.Value = false;
+            _checks.Check(Context.Find(_player, hovered: false) == null, "with TakeForRecipes off the key is not for the selected recipe");
+            Settings.TakeForRecipes.Value = true;
+            _checks.Check(Context.Find(_player, hovered: false)?.Kind == EntryKind.Recipe, "turned back on, it is");
+        }
+        else
+        {
+            _checks.Skip("the hammer's recipe is not in the crafting tab here");
+        }
+
+        gui.Hide();
+        yield return Frames(4);
+
+        var (x, y) = _site.FreeSlot();
+        _site.Bag.AddItem(Site.Make("ArrowWood", 23), new Vector2i(x, y));
+        Settings.TopUpAmount.Value = 20;
+        var topUp = Target.ForTopUp(Scene.StackOf(_site.Bag.GetItemAt(x, y)), Settings.TopUpAmount.Value);
+        _checks.Check(!topUp.FillsStack && topUp.Count == 20, "with TopUpAmount 20 a press over a stack is for 20", topUp.Label);
+        yield return Grab(topUp);
+        _checks.Check(_site.Bag.GetItemAt(x, y)?.m_stack == 43, "and 20 arrive in that stack", _site.Bag.GetItemAt(x, y)?.m_stack.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        Settings.TopUpAmount.Value = 0;
+
+        Settings.Messages.Value = Messages.Short;
+        yield return Grab(Target.ForItem(Site.Wood, Text.Shown(Site.Wood), 1000));
+        string lines = string.Join(" | ", Grabber.LastLines);
+        _checks.Check(Grabber.LastLines.Count == 2 && Grabber.LastLines[1].StartsWith("Short: ", StringComparison.Ordinal) && !lines.Contains(" short: "),
+            "with Messages Short a grab names what is short without the reasons", lines);
+        Settings.Messages.Value = Messages.Off;
+        _site.ClearBag();
+        yield return Grab(Target.ForItem(Site.Wood, Text.Shown(Site.Wood), 5));
+        _checks.Check(Grabber.LastLines.Count == 0 && Site.Count(_site.Bag, Site.Wood) == 5, "with Messages Off it still takes and says nothing", string.Join(" | ", Grabber.LastLines));
+        Settings.Messages.Value = Messages.Full;
     }
 
     private IEnumerator NeverAnswers()

@@ -51,6 +51,17 @@ internal static class Readout
         return string.Join("\n", lines);
     }
 
+    /// <summary>
+    /// Whether the build box shows, as set, given the plan for one of the piece: with
+    /// <see cref="BuildBox.UntilCarried"/> it hides while the inventory holds enough to build one.
+    /// </summary>
+    public static bool Shows(Plan plan, BuildBox setting) => setting switch
+    {
+        BuildBox.Always => true,
+        BuildBox.UntilCarried => plan.Outcomes.Any(o => o.Need > 0),
+        _ => false,
+    };
+
     /// <summary>A part's last column: how many the press takes, and how many would still be short.</summary>
     private static string Takes(Outcome o)
     {

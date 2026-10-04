@@ -58,9 +58,15 @@ internal static class Report
     /// <param name="done">What carrying it out came to.</param>
     /// <param name="shown">The item's name as the player reads it.</param>
     /// <param name="canRoute">Whether MultiUserChest is there to reach chests other players' games hold.</param>
-    public static IReadOnlyList<string> Lines(string label, Plan plan, Done done, Func<string, string> shown, bool canRoute)
+    /// <param name="messages">How much to tell: <see cref="Messages.Short"/> names what is short without the reasons.</param>
+    public static IReadOnlyList<string> Lines(string label, Plan plan, Done done, Func<string, string> shown, bool canRoute, Messages messages = Messages.Full)
     {
         var lines = new List<string>();
+        if (messages == Messages.Off)
+        {
+            return lines;
+        }
+
         if (plan.Outcomes.Count > 0 && plan.Outcomes.All(o => o.Total))
         {
             lines.Add(Summary(label, plan, done, shown));
@@ -78,9 +84,17 @@ internal static class Report
             });
         }
 
-        foreach (var outcome in plan.Outcomes.Where(o => o.Short > 0))
+        var shorts = plan.Outcomes.Where(o => o.Short > 0).ToList();
+        if (messages == Messages.Short && shorts.Count > 0)
         {
-            lines.Add($"{Count(outcome.Short, shown(outcome.Name))} short: {string.Join("; ", Reasons(outcome, canRoute))}");
+            lines.Add($"Short: {string.Join(", ", shorts.Select(o => Count(o.Short, shown(o.Name))))}");
+        }
+        else if (messages == Messages.Full)
+        {
+            foreach (var outcome in shorts)
+            {
+                lines.Add($"{Count(outcome.Short, shown(outcome.Name))} short: {string.Join("; ", Reasons(outcome, canRoute))}");
+            }
         }
 
         if (done.Changed > 0)
@@ -104,9 +118,14 @@ internal static class Report
     /// Once other players' chests have answered: what arrived, and for anything that did not,
     /// whether the chest's game turned it down or never answered.
     /// </summary>
-    public static IReadOnlyList<string> Arrivals(IEnumerable<Arrival> arrivals, Func<string, string> shown)
+    public static IReadOnlyList<string> Arrivals(IEnumerable<Arrival> arrivals, Func<string, string> shown, Messages messages = Messages.Full)
     {
         var lines = new List<string>();
+        if (messages == Messages.Off)
+        {
+            return lines;
+        }
+
         var byItem = arrivals.GroupBy(a => a.Name, StringComparer.Ordinal).ToList();
         foreach (var item in byItem)
         {

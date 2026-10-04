@@ -153,11 +153,15 @@ internal sealed class Want
     }
 
     /// <summary>
-    /// Fills one carried stack to a full stack: only items that stack with it are taken, and
-    /// they go into that slot alone, whatever kind of slot it is.
+    /// Fills one carried stack: only items that stack with it are taken, and they go into that
+    /// slot alone, whatever kind of slot it is. At most <paramref name="atMost"/> are taken when it
+    /// is above zero; otherwise the stack is filled to a full one.
     /// </summary>
-    public static Want TopUp(ItemStack held)
-        => new(held.Name, held.MaxStack - held.Count, countCarried: false, held.WorldLevel, held);
+    public static Want TopUp(ItemStack held, int atMost = 0)
+    {
+        int room = held.MaxStack - held.Count;
+        return new(held.Name, atMost > 0 ? Math.Min(atMost, room) : room, countCarried: false, held.WorldLevel, held);
+    }
 
     /// <summary>For a top-up, the carried stack to fill; otherwise none.</summary>
     public ItemStack Into { get; }
@@ -269,6 +273,30 @@ internal sealed class Outcome
     public bool AwaitsAnswer { get; internal set; }
 
     public int Short => Math.Max(0, Need - Planned);
+}
+
+/// <summary>How much is told after a grab.</summary>
+internal enum Messages
+{
+    /// <summary>What was taken, and for anything short, why.</summary>
+    Full,
+
+    /// <summary>What was taken and what is short, without the reasons.</summary>
+    Short,
+
+    /// <summary>Nothing after a grab or an answer from another player's chest.</summary>
+    Off,
+}
+
+/// <summary>When the box beside the game's build panel shows.</summary>
+internal enum BuildBox
+{
+    Always,
+
+    /// <summary>Until everything the piece needs is carried.</summary>
+    UntilCarried,
+
+    Never,
 }
 
 /// <summary>Everything one grab will do.</summary>
