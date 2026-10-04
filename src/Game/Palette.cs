@@ -50,6 +50,15 @@ internal sealed class Palette
 
     public static bool IsOpen { get; private set; }
 
+    private static int _closedFrame = -10;
+
+    /// <summary>
+    /// Whether the game's keys are kept from the game: while the box is open, and for two frames
+    /// after it closes, as the key that closed it (Enter, Escape) is still down then and would
+    /// otherwise open the chat or the menu.
+    /// </summary>
+    public static bool HoldsKeys => IsOpen || Time.frameCount <= _closedFrame + 2;
+
     /// <summary>The search text, as the self-test types it.</summary>
     internal string Text
     {
@@ -111,6 +120,13 @@ internal sealed class Palette
     public void Close()
     {
         IsOpen = false;
+        _closedFrame = Time.frameCount;
+        if (ZInput.instance != null)
+        {
+            ZInput.ResetButtonStatus("Chat");
+            ZInput.ResetButtonStatus("Inventory");
+        }
+
         _catalog = null;
         GUIUtility.keyboardControl = 0;
     }

@@ -31,7 +31,7 @@ internal static class TextInputBlock
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static bool Open() => Palette.IsOpen;
+    private static bool Open() => Palette.HoldsKeys;
 }
 
 /// <summary>
@@ -49,7 +49,7 @@ internal static class InventoryKeyBlock
         => _off || !Blocks.Safely("keeping the inventory from reading what is typed into the search box", Open, ref _off);
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static bool Open() => Palette.IsOpen;
+    private static bool Open() => Palette.HoldsKeys;
 }
 
 /// <summary>
@@ -71,7 +71,7 @@ internal static class WheelBlock
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static bool Open() => Palette.IsOpen;
+    private static bool Open() => Palette.HoldsKeys;
 }
 
 internal static class Blocks

@@ -49,7 +49,7 @@ internal sealed class BuildReadout
 
         var nearby = CraftyLink.NearbyChests(player);
         int state = State(piece, nearby, player, key);
-        if (state == _state && _line && _line.gameObject.activeSelf)
+        if (state == _state && _line && _line.transform.parent.gameObject.activeSelf)
         {
             Counts = (Counts.Worked, Counts.Skipped + 1);
             return;
@@ -74,7 +74,8 @@ internal sealed class BuildReadout
                 line.text = text;
             }
 
-            line.gameObject.SetActive(true);
+            line.transform.parent.gameObject.SetActive(true);
+            Place(line);
         }
     }
 
@@ -82,15 +83,15 @@ internal sealed class BuildReadout
     {
         if (_line)
         {
-            Object.Destroy(_line.gameObject);
+            Object.Destroy(_line.transform.parent.gameObject);
         }
     }
 
     private void Hide()
     {
-        if (_line && _line.gameObject.activeSelf)
+        if (_line && _line.transform.parent.gameObject.activeSelf)
         {
-            _line.gameObject.SetActive(false);
+            _line.transform.parent.gameObject.SetActive(false);
         }
     }
 
@@ -125,10 +126,12 @@ internal sealed class BuildReadout
         }
     }
 
+    private static readonly Vector3[] Corners = new Vector3[4];
+
     /// <summary>
-    /// The copy of the description text, made once: a child of the description, hung below its
-    /// box, word-wrapped to its width. Anything on the copy that would rewrite its text (the
-    /// game's Localize component) is taken off.
+    /// The lines, made once: a dark box under the build panel's content holding a copy of the
+    /// description's own text, so it has the game's font. Anything on the copy that would rewrite
+    /// its text (the game's Localize component) is taken off.
     /// </summary>
     private TMP_Text Line()
     {
@@ -137,14 +140,20 @@ internal sealed class BuildReadout
             return _line;
         }
 
-        var description = Hud.instance ? Hud.instance.m_pieceDescription : null;
-        if (!description)
+        var hud = Hud.instance;
+        var description = hud ? hud.m_pieceDescription : null;
+        if (!description || !hud.m_buildHud)
         {
             return null;
         }
 
-        var copy = Object.Instantiate(description.gameObject, description.transform);
-        copy.name = "Rummage";
+        var box = new GameObject("Rummage", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+        box.transform.SetParent(hud.m_buildHud.transform, false);
+        box.GetComponent<UnityEngine.UI.Image>().color = new Color(0f, 0f, 0f, 0.62f);
+        ((RectTransform)box.transform).pivot = new Vector2(0f, 1f);
+
+        var copy = Object.Instantiate(description.gameObject, box.transform);
+        copy.name = "Text";
         foreach (var component in copy.GetComponents<Component>())
         {
             if (component && component.GetType().Name == "Localize")
@@ -158,18 +167,64 @@ internal sealed class BuildReadout
             Object.Destroy(child.gameObject);
         }
 
-        var box = (RectTransform)copy.transform;
-        box.anchorMin = new Vector2(0f, 0f);
-        box.anchorMax = new Vector2(1f, 0f);
-        box.pivot = new Vector2(0.5f, 1f);
-        box.anchoredPosition = new Vector2(0f, -4f);
-        box.sizeDelta = new Vector2(0f, 60f);
+        var text = (RectTransform)copy.transform;
+        text.anchorMin = Vector2.zero;
+        text.anchorMax = Vector2.one;
+        text.pivot = new Vector2(0f, 1f);
+        text.offsetMin = new Vector2(8f, 4f);
+        text.offsetMax = new Vector2(-8f, -4f);
 
         _line = copy.GetComponent<TMP_Text>();
         _line.richText = true;
         _line.enableWordWrapping = true;
         _line.overflowMode = TextOverflowModes.Overflow;
-        _line.fontSize = description.fontSize * 0.95f;
+        _line.fontSize = description.fontSize * 0.9f;
         return _line;
+    }
+
+    /// <summary>
+    /// Puts the box below everything the panel shows for the piece (its description and every
+    /// cost icon with its name and amount), as wide as that content, and as tall as the text.
+    /// </summary>
+    private static void Place(TMP_Text line)
+    {
+        var hud = Hud.instance;
+        var box = (RectTransform)line.transform.parent;
+        var parent = (RectTransform)box.parent;
+        float left = float.MaxValue;
+        float right = float.MinValue;
+        float bottom = float.MaxValue;
+        Grow(hud.m_pieceDescription.rectTransform, ref left, ref right, ref bottom);
+        foreach (var item in hud.m_requirementItems)
+        {
+            if (item && item.activeInHierarchy)
+            {
+                foreach (var part in item.GetComponentsInChildren<RectTransform>())
+                {
+                    Grow(part, ref left, ref right, ref bottom);
+                }
+            }
+        }
+
+        var topLeft = parent.InverseTransformPoint(new Vector3(left, bottom, 0f));
+        var topRight = parent.InverseTransformPoint(new Vector3(right, bottom, 0f));
+        float width = Mathf.Max(200f, topRight.x - topLeft.x);
+        float height = line.GetPreferredValues(line.text, width - 16f, 0f).y + 8f;
+        box.anchorMin = box.anchorMax = new Vector2(0.5f, 0.5f);
+        box.sizeDelta = new Vector2(width, height);
+        box.localPosition = new Vector3(topLeft.x, topLeft.y - 6f, 0f);
+    }
+
+    private static void Grow(RectTransform part, ref float left, ref float right, ref float bottom)
+    {
+        if (!part || !part.gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        part.GetWorldCorners(Corners);
+        left = Mathf.Min(left, Corners[0].x);
+        right = Mathf.Max(right, Corners[2].x);
+        bottom = Mathf.Min(bottom, Corners[0].y);
     }
 }

@@ -63,9 +63,6 @@ internal static class Finder
 
         LastLit = lit;
         LastLines = Locate.Lines(parts, radius, Text.Shown);
-        foreach (string line in LastLines)
-        {
-            player.Message(MessageHud.MessageType.TopLeft, line);
-        }
+        Notice.Say(player, LastLines);
     }
 }

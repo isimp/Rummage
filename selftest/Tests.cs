@@ -202,7 +202,7 @@ internal sealed class Tests
         _checks.Check(line.Contains($"Wood {cost * 2}/{cost * 3}") && line.Contains($"J brings {cost} Wood"), "while building, the panel text shows the bag and what the next press brings", line);
         Plugin.Instance.BuildLine.Refresh();
         yield return Frames(5);
-        var shown = Hud.instance && Hud.instance.m_pieceDescription ? Hud.instance.m_pieceDescription.transform.Find("Rummage")?.GetComponent<TMPro.TMP_Text>() : null;
+        var shown = Hud.instance && Hud.instance.m_buildHud ? Hud.instance.m_buildHud.transform.Find("Rummage/Text")?.GetComponent<TMPro.TMP_Text>() : null;
         _checks.Check(shown && shown.gameObject.activeInHierarchy && shown.text.Contains("in your bag"), "the text shows in the game's build panel", shown ? shown.text : "not there");
 
         yield return CountingPastAMissingPart();

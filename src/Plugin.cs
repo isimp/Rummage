@@ -90,7 +90,7 @@ public sealed class Plugin : BaseUnityPlugin
 
         if (!CraftyLink.Ready)
         {
-            player.Message(MessageHud.MessageType.TopLeft, CraftyLink.Problem);
+            Notice.Say(player, CraftyLink.Problem);
             return;
         }
 
@@ -110,7 +110,7 @@ public sealed class Plugin : BaseUnityPlugin
         catch (System.Exception e)
         {
             Log.LogError($"The key failed: {e}");
-            player.Message(MessageHud.MessageType.TopLeft, "Rummage ran into an error; see the log");
+            Notice.Say(player, "Rummage ran into an error; see the log");
         }
     }
 

@@ -70,13 +70,7 @@ internal sealed class Grabber
         }
 
         LastArrivals = Report.Arrivals(_arrivals, Text.Shown);
-        if (_waitingPlayer)
-        {
-            foreach (string line in LastArrivals)
-            {
-                Say(_waitingPlayer, line);
-            }
-        }
+        Notice.Say(_waitingPlayer, LastArrivals);
 
         _arrivals.Clear();
         _asked.Clear();
@@ -86,7 +80,7 @@ internal sealed class Grabber
     {
         if (_waiting.Busy)
         {
-            Say(player, "Still waiting for the last rummage to arrive");
+            Notice.Say(player, "Still waiting for the last rummage to arrive");
             return;
         }
 
@@ -141,10 +135,7 @@ internal sealed class Grabber
         }
 
         LastLines = Report.Lines(target.Label, plan, new Done(took, asked, changed, refused), Text.Shown, MucLink.Ready);
-        foreach (string line in LastLines)
-        {
-            Say(player, line);
-        }
+        Notice.Say(player, LastLines);
     }
 
     /// <summary>
@@ -233,5 +224,4 @@ internal sealed class Grabber
     private static void Add(Dictionary<string, int> counts, string name, int amount)
         => counts[name] = (counts.TryGetValue(name, out int sum) ? sum : 0) + amount;
 
-    private static void Say(Player player, string line) => player.Message(MessageHud.MessageType.TopLeft, line);
 }
