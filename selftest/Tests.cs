@@ -417,7 +417,9 @@ internal sealed class Tests
         _checks.Check(palette.Text == $"40 {wood}", $"Tab completes 40 wo to the shortest name it starts, 40 {wood}", palette.Text);
         int before = Site.Count(_site.Bag, Site.Wood);
         palette.PressEnter(_player);
-        _checks.Check(!Palette.IsOpen && !TextInput.IsVisible(), "Enter closes it and gives the keys back");
+        _checks.Check(!Palette.IsOpen && TextInput.IsVisible(), "Enter closes it and still holds the keys while Enter is down");
+        yield return Frames(4);
+        _checks.Check(!TextInput.IsVisible(), "a few frames later the keys are the game's again");
         yield return Idle();
         _checks.Check(Site.Count(_site.Bag, Site.Wood) - before == 40, "40 wood arrived", (Site.Count(_site.Bag, Site.Wood) - before).ToString(System.Globalization.CultureInfo.InvariantCulture));
     }

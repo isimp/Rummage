@@ -183,10 +183,11 @@ internal sealed class BuildReadout
     }
 
     /// <summary>
-    /// Puts the box below everything the panel shows for the piece (its description and every
-    /// cost icon with its name and amount), starting at that content's left edge. It is as wide
-    /// as its longest line, so each line stays on one row, but at least as wide as the content and
-    /// never past the screen's right edge; only a line wider than that wraps.
+    /// Puts the box to the right of the piece's cost icons, level with the top of that row: below
+    /// the panel sit the game's key hints, so the space beside the costs is the free one. It is as
+    /// wide as its longest line, so each line stays on one row, but never past the screen's right
+    /// edge; only a line wider than that wraps. With no cost icons showing, it goes below the
+    /// description instead.
     /// </summary>
     private static void Place(TMP_Text line)
     {
@@ -195,22 +196,33 @@ internal sealed class BuildReadout
         var parent = (RectTransform)box.parent;
         float left = float.MaxValue;
         float right = float.MinValue;
+        float top = float.MinValue;
         float bottom = float.MaxValue;
-        Grow(hud.m_pieceDescription.rectTransform, ref left, ref right, ref bottom);
         foreach (var item in hud.m_requirementItems)
         {
             if (item && item.activeInHierarchy)
             {
                 foreach (var part in item.GetComponentsInChildren<RectTransform>())
                 {
-                    Grow(part, ref left, ref right, ref bottom);
+                    Grow(part, ref left, ref right, ref top, ref bottom);
                 }
             }
         }
 
-        var topLeft = parent.InverseTransformPoint(new Vector3(left, bottom, 0f));
-        var topRight = parent.InverseTransformPoint(new Vector3(right, bottom, 0f));
-        float content = Mathf.Max(200f, topRight.x - topLeft.x);
+        Vector3 corner;
+        if (right > float.MinValue)
+        {
+            corner = parent.InverseTransformPoint(new Vector3(right, top, 0f));
+            corner.x += 14f;
+        }
+        else
+        {
+            float l = float.MaxValue, r = float.MinValue, t = float.MinValue, b = float.MaxValue;
+            Grow(hud.m_pieceDescription.rectTransform, ref l, ref r, ref t, ref b);
+            corner = parent.InverseTransformPoint(new Vector3(l, b, 0f));
+            corner.y -= 6f;
+        }
+
         float natural = line.GetPreferredValues(line.text).x + 16f;
         float room = float.MaxValue;
         var screen = parent;
@@ -222,17 +234,17 @@ internal sealed class BuildReadout
         if (screen != parent)
         {
             screen.GetWorldCorners(Corners);
-            room = parent.InverseTransformPoint(Corners[2]).x - topLeft.x - 12f;
+            room = parent.InverseTransformPoint(Corners[2]).x - corner.x - 12f;
         }
 
-        float width = Mathf.Max(content, Mathf.Min(natural, room));
+        float width = Mathf.Max(160f, Mathf.Min(natural, room));
         float height = line.GetPreferredValues(line.text, width - 16f, 0f).y + 8f;
         box.anchorMin = box.anchorMax = new Vector2(0.5f, 0.5f);
         box.sizeDelta = new Vector2(width, height);
-        box.localPosition = new Vector3(topLeft.x, topLeft.y - 6f, 0f);
+        box.localPosition = new Vector3(corner.x, corner.y, 0f);
     }
 
-    private static void Grow(RectTransform part, ref float left, ref float right, ref float bottom)
+    private static void Grow(RectTransform part, ref float left, ref float right, ref float top, ref float bottom)
     {
         if (!part || !part.gameObject.activeInHierarchy)
         {
@@ -242,6 +254,7 @@ internal sealed class BuildReadout
         part.GetWorldCorners(Corners);
         left = Mathf.Min(left, Corners[0].x);
         right = Mathf.Max(right, Corners[2].x);
+        top = Mathf.Max(top, Corners[2].y);
         bottom = Mathf.Min(bottom, Corners[0].y);
     }
 }
