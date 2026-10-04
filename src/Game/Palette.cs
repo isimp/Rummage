@@ -78,6 +78,7 @@ internal sealed class Palette
         _focusFrames = 3;
         _cursorToEnd = true;
         IsOpen = true;
+        Rank();
     }
 
     public void Close()
@@ -259,7 +260,7 @@ internal sealed class Palette
         GUI.Label(new Rect(x + 14f, panel.yMax - 110f, Width - 28f, 28f), PartsOf(Chosen), Skin.Hint);
         DrawCount(new Rect(x + 12f, panel.yMax - 76f, Width - 24f, 34f), player);
         GUI.Label(new Rect(x + 14f, panel.yMax - 36f, Width - 28f, 26f),
-            "Enter take · Tab complete · ↑↓ choose · Esc close · a number before or after the name sets the count", Skin.Hint);
+            "Enter take · Tab complete · ↑↓ choose · Esc close · type a number for the count", Skin.Hint);
 
         GUI.matrix = matrix;
     }
