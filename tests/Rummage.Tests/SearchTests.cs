@@ -82,7 +82,21 @@ public class SearchTests
     }
 
     [Fact]
-    public void AmongEquallyGoodMatchesWhatTheChestsHoldComesFirst()
+    public void AmongEquallyGoodMatchesTheShorterNameComesFirst()
+    {
+        Entry[] catalog =
+        [
+            new("$item_arrow_wood", "Wood arrow", EntryKind.Item, inChests: 199),
+            new("$item_wood", "Wood", EntryKind.Item, inChests: 98),
+        ];
+
+        var ranked = Search.Rank("wo", catalog).Select(e => e.Shown).ToArray();
+
+        Assert.Equal(["Wood", "Wood arrow"], ranked);
+    }
+
+    [Fact]
+    public void AmongEquallyGoodMatchesOfTheSameLengthWhatTheChestsHoldComesFirst()
     {
         var ranked = Ranked("wood");
         int fine = System.Array.IndexOf(ranked, "Fine wood");

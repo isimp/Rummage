@@ -405,6 +405,9 @@ internal sealed class Tests
         palette.Text = $"{wood.ToUpperInvariant()} 40";
         palette.PressTab();
         _checks.Check(palette.Text == $"40 {wood}", "Tab puts a count typed after the name in front", palette.Text);
+        palette.Text = "40 wo";
+        palette.PressTab();
+        _checks.Check(palette.Text == $"40 {wood}", $"Tab completes 40 wo to the shortest name it starts, 40 {wood}", palette.Text);
         int before = Site.Count(_site.Bag, Site.Wood);
         palette.PressEnter(_player);
         _checks.Check(!Palette.IsOpen && !TextInput.IsVisible(), "Enter closes it and gives the keys back");

@@ -26,7 +26,7 @@
 
 Enter without a number in the text finds instead of taking (`Game/Finder.cs`, `Core/Locate.cs`): every chest AzuCraftyBoxes has registered within 50 m (the ones the player may use and ones someone else has open; other players' private chests are never registered) is counted for the item, or for each part of a piece or recipe, and the chests holding any are lit for 6 seconds with the game's own highlight, given again every tenth of a second as it fades after a fifth (`Game/Highlighter.cs`). Without the registry it falls back to AzuCraftyBoxes' list at its own range.
 
-`Core/Search.cs` parses the text (a whole number at either end is the count) and ranks: the whole name, then names starting with the text, then a word starting with it, then the text inside a word, then its letters in order. Equal matches put what the chests hold most of first. With nothing typed it lists the chests' items by name.
+`Core/Search.cs` parses the text (a whole number at either end is the count) and ranks: the whole name, then names starting with the text, then a word starting with it, then the text inside a word, then its letters in order. Among equal matches the shorter name comes first, then what the chests hold most of. With nothing typed it lists the chests' items by name.
 
 It is drawn in the game's own art (`Game/UiArt.cs`): sprites from the game's `UIAtlas` (`woodpanel_settings`, `text_field`, `button`, `button_highlight`, `button_small`) drawn as nine-part frames, item, piece and recipe icons, the Norse font for its heading and the game's orange and beige. Where the atlas or a sprite cannot be had, plain fills stand in.
 

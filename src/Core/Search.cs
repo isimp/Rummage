@@ -135,8 +135,9 @@ internal static class Search
 {
     /// <summary>
     /// The whole name first, then names starting with the text, then a word in the name starting
-    /// with it, then the text anywhere in the name, then its letters in order. Equal matches put
-    /// what the chests hold most of first. With nothing typed, the chests' contents by name.
+    /// with it, then the text anywhere in the name, then its letters in order. Among equal matches
+    /// the shorter name comes first, as it is closer to what was typed, then what the chests hold
+    /// most of. With nothing typed, the chests' contents by name.
     /// </summary>
     public static IReadOnlyList<Entry> Rank(string text, IEnumerable<Entry> entries)
     {
@@ -151,8 +152,8 @@ internal static class Search
         return entries.Select(e => (Entry: e, Score: Score(text, e.Shown)))
             .Where(s => s.Score >= 0)
             .OrderBy(s => s.Score)
-            .ThenByDescending(s => s.Entry.InChests)
             .ThenBy(s => s.Entry.Shown.Length)
+            .ThenByDescending(s => s.Entry.InChests)
             .ThenBy(s => s.Entry.Shown, StringComparer.OrdinalIgnoreCase)
             .Select(s => s.Entry)
             .ToList();
