@@ -206,6 +206,27 @@ internal sealed class Site
         }
     }
 
+    /// <summary>A switched-on ward owned by nobody, standing on the chest given; taken down with <see cref="TakeDownWard"/>.</summary>
+    public GameObject PlaceWard(Container over)
+    {
+        var ward = UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("guard_stone"), over.transform.position + Vector3.up * 0.1f, Quaternion.identity);
+        var zdo = ward.GetComponent<ZNetView>().GetZDO();
+        zdo.Set(ZDOVars.s_creator, Nobody);
+        CreatorOf(ward.GetComponent<Piece>()) = Nobody;
+        zdo.Set(ZDOVars.s_enabled, true);
+        return ward;
+    }
+
+    public static void TakeDownWard(GameObject ward)
+    {
+        var view = ward ? ward.GetComponent<ZNetView>() : null;
+        if (view && view.IsValid())
+        {
+            view.ClaimOwnership();
+            ZNetScene.instance.Destroy(ward);
+        }
+    }
+
     public static string Where(Container chest) => chest ? chest.transform.position.ToString("F0", System.Globalization.CultureInfo.InvariantCulture) : "(gone)";
 
     private void SetBelongingsAside()

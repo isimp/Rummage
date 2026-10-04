@@ -83,7 +83,7 @@ internal sealed class Catalog
 
         foreach (var chest in CraftyLink.Registered(player.transform.position, Finder.Radius))
         {
-            if (chest && chest.GetInventory() != null && (CraftyLink.OnlyChests == null || CraftyLink.OnlyChests(chest)))
+            if (chest && chest.GetInventory() != null && Access.MayOpen(chest, player) && (CraftyLink.OnlyChests == null || CraftyLink.OnlyChests(chest)))
             {
                 Count(chest.GetInventory(), held);
             }
@@ -92,7 +92,7 @@ internal sealed class Catalog
         var reachable = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var chest in scene.Chests.Values)
         {
-            if (chest && chest.GetInventory() != null)
+            if (chest && chest.GetInventory() != null && Access.MayOpen(chest, player))
             {
                 Count(chest.GetInventory(), reachable);
             }

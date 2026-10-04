@@ -45,8 +45,16 @@ internal sealed class Scene
 
             int id = chests.Count;
             chests[id] = chest;
+            float distance = Vector3.Distance(here, chest.transform.position);
+            if (!Access.MayOpen(chest, player))
+            {
+                // Listed by AzuCraftyBoxes from an earlier moment, but not one the player could open now.
+                sources.Add(new Source(id, distance, Reach.Barred, Stacks(inventory), mayTake: null, Bar.Locked));
+                continue;
+            }
+
             string chestPrefab = Utils.GetPrefabName(chest.gameObject);
-            sources.Add(new Source(id, Vector3.Distance(here, chest.transform.position), ReachOf(chest, view),
+            sources.Add(new Source(id, distance, ReachOf(chest, view),
                 Stacks(inventory), itemPrefab => CraftyLink.MayTake(chestPrefab, itemPrefab)));
         }
 

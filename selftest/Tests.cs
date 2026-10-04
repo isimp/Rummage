@@ -129,6 +129,7 @@ internal sealed class Tests
             yield return Part("Leave One Item", LeaveOne());
             yield return Part("chest rules", ChestRules());
             yield return Part("chests that may not be used", Barred());
+            yield return Part("a chest under someone else's ward", Warded());
             yield return Part("a full inventory with one part stack", FullInventory());
             yield return Part("a recipe in the crafting tab, pressed twice", Recipe());
             yield return Part("filling a stack", TopUp());
@@ -574,6 +575,39 @@ internal sealed class Tests
         }
 
         zdo.Set(ZDOVars.s_inUse, 0);
+    }
+
+    /// <summary>
+    /// A chest AzuCraftyBoxes listed earlier, now under a ward owned by nobody: Rummage must not take
+    /// from it nor show it, as the player could not open it by hand. Skipped when the game lets the
+    /// player into every ward, as a server admin bypass does.
+    /// </summary>
+    private IEnumerator Warded()
+    {
+        var ward = _site.PlaceWard(_site.Main);
+        yield return Frames(10);
+        try
+        {
+            if (PrivateArea.CheckAccess(_site.Main.transform.position, 0f, false, false))
+            {
+                _checks.Skip("the game lets you open chests under any ward here, as an admin bypass (such as in god mode) does");
+                yield break;
+            }
+
+            CraftyLink.OnlyChests = chest => chest == _site.Main;
+            _checks.Check(CraftyLink.NearbyChests(_player).Contains(_site.Main), "AzuCraftyBoxes still lists the chest, from before the ward");
+            int chestWood = Site.Count(_site.Main.GetInventory(), Site.Wood);
+            yield return Grab(Target.ForItem(Site.Wood, "Wood", 5));
+            _checks.Check(Site.Count(_site.Bag, Site.Wood) == 0, "nothing is taken from it");
+            _checks.Check(Site.Count(_site.Main.GetInventory(), Site.Wood) == chestWood, "the chest keeps its wood");
+            _checks.Check(Grabber.LastLines.Any(l => l.Contains("in chests you may not take from")), "the report names it as a chest you may not take from", string.Join(" | ", Grabber.LastLines));
+            Finder.Find(_player, Target.ForItem(Site.Wood, "Wood", 1));
+            _checks.Check(!Finder.LastLit.Contains(_site.Main), "finding does not show it");
+        }
+        finally
+        {
+            Site.TakeDownWard(ward);
+        }
     }
 
     private bool AllListed() => _site.Listed.All(c => CraftyLink.NearbyChests(_player).Contains(c));

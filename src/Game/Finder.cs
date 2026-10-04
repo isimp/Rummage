@@ -36,7 +36,7 @@ internal static class Finder
             radius = CraftyLink.Range;
         }
 
-        chests = chests.Where(c => c && c.GetInventory() != null && (CraftyLink.OnlyChests == null || CraftyLink.OnlyChests(c))).ToList();
+        chests = chests.Where(c => c && c.GetInventory() != null && Access.MayOpen(c, player) && (CraftyLink.OnlyChests == null || CraftyLink.OnlyChests(c))).ToList();
         var names = target.Kind == EntryKind.Item ? [target.Cost[0].Name] : Cost.Sum(target.Cost).Keys.ToList();
         var lit = new List<Container>();
         var parts = new List<(string, IReadOnlyList<(float, int)>)>();
