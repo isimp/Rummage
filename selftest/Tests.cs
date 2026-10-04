@@ -382,7 +382,28 @@ internal sealed class Tests
         _checks.Check(Finder.LastLit.Count == 3, "the three chests light up", Finder.LastLit.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
         palette.Open(_player, null);
-        palette.Text = "40 wood";
+        var numbered = Catalog.Build(_player, Scene.Read(_player)).Entries
+            .FirstOrDefault(e => e.Shown.Split(' ').Length > 1 && e.Shown.Split(' ').Last().All(char.IsDigit));
+        if (numbered != null)
+        {
+            palette.Text = numbered.Shown;
+            _checks.Check(palette.TypedCount == null && palette.Results.Count > 0 && palette.Results[0].Shown == numbered.Shown,
+                $"\"{numbered.Shown}\" is read as the name, its number no count", palette.Results.Count > 0 ? palette.Results[0].Shown : "nothing");
+            palette.Text = $"2 {numbered.Shown}";
+            _checks.Check(palette.TypedCount == 2, $"\"2 {numbered.Shown}\" is two of it", palette.TypedCount?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "no count");
+        }
+        else
+        {
+            _checks.Note("no known piece or recipe here has a name ending in a number");
+        }
+
+        palette.Text = "40 wo";
+        palette.PressTab();
+        string wood = Text.Shown(Site.Wood);
+        _checks.Check(palette.Text == $"40 {wood}", $"Tab turns \"40 wo\" into \"40 {wood}\"", palette.Text);
+        palette.Text = "wo 40";
+        palette.PressTab();
+        _checks.Check(palette.Text == $"40 {wood}", "Tab puts a count typed after the name in front", palette.Text);
         int before = Site.Count(_site.Bag, Site.Wood);
         palette.PressEnter(_player);
         _checks.Check(!Palette.IsOpen && !TextInput.IsVisible(), "Enter closes it and gives the keys back");

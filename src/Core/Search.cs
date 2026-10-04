@@ -54,9 +54,21 @@ internal readonly struct Query : IEquatable<Query>
 
     public string Text { get; }
 
-    public static Query Parse(string text)
+    public static Query Parse(string text) => Parse(text, null);
+
+    /// <summary>
+    /// The text read against the names it may stand for: when its words are the first words of a
+    /// name, whole words and numbers included, it is that name and has no count; otherwise a
+    /// number at either end is the count, as in "40 wood" and "wood 40".
+    /// </summary>
+    public static Query Parse(string text, IEnumerable<string> names)
     {
-        var words = (text ?? string.Empty).Split((char[])null, StringSplitOptions.RemoveEmptyEntries).ToList();
+        var words = Words(text);
+        if (names != null && words.Count > 0 && words.Any(IsNumber) && names.Any(name => StartsWith(name, words)))
+        {
+            return new Query(null, string.Join(" ", words));
+        }
+
         int? count = null;
         if (words.Count > 0 && TryCount(words[0], out int first))
         {
@@ -70,6 +82,38 @@ internal readonly struct Query : IEquatable<Query>
         }
 
         return new Query(count > 0 ? count : null, string.Join(" ", words));
+    }
+
+    /// <summary>Tab: the chosen name in place of what was typed, with a typed count written in front.</summary>
+    public static string Complete(string text, string chosen, IEnumerable<string> names)
+    {
+        var query = Parse(text, names);
+        return query.Count is int count ? $"{count.ToString(CultureInfo.InvariantCulture)} {chosen}" : chosen;
+    }
+
+    private static List<string> Words(string text)
+        => (text ?? string.Empty).Split((char[])null, StringSplitOptions.RemoveEmptyEntries).ToList();
+
+    private static bool IsNumber(string word) => TryCount(word, out _);
+
+    /// <summary>Whether the name begins with these words, each whole.</summary>
+    private static bool StartsWith(string name, List<string> words)
+    {
+        var nameWords = Words(name);
+        if (words.Count > nameWords.Count)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < words.Count; i++)
+        {
+            if (!string.Equals(words[i], nameWords[i], StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool TryCount(string word, out int count)

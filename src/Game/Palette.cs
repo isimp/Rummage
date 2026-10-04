@@ -39,6 +39,7 @@ internal sealed class Palette
     private string _parts = string.Empty;
     private string _queryFor;
     private Query _query;
+    private List<string> _names = new();
     private bool _cursorToEnd;
 
     public Palette(Grabber grabber)
@@ -64,6 +65,16 @@ internal sealed class Palette
     /// <summary>The chosen entry's parts line, for the self-test.</summary>
     internal string ChosenParts => PartsOf(Chosen);
 
+    /// <summary>Tab, as the self-test presses it.</summary>
+    internal void PressTab()
+    {
+        Rank();
+        Complete();
+    }
+
+    /// <summary>The count read from the text, for the self-test.</summary>
+    internal int? TypedCount => Parsed.Count;
+
     /// <summary>Enter, as the self-test presses it.</summary>
     internal void PressEnter(Player player)
     {
@@ -84,6 +95,12 @@ internal sealed class Palette
         _countFor = null;
         _details.Clear();
         _partsFor = null;
+        _queryFor = null;
+        _names = _catalog.Entries.Select(e => e.Shown).ToList();
+        if (context != null)
+        {
+            _names.Add(context.Shown);
+        }
         _focusFrames = 3;
         _cursorToEnd = true;
         IsOpen = true;
@@ -129,7 +146,7 @@ internal sealed class Palette
         }
 
         _rankedFor = _text;
-        var query = Query.Parse(_text);
+        var query = Parsed;
         var ranked = Search.Rank(query.Text, _catalog.Entries).ToList();
         if (_contextEntry != null && string.Equals(query.Text, _context.Shown, StringComparison.OrdinalIgnoreCase))
         {
@@ -169,7 +186,7 @@ internal sealed class Palette
             if (!string.Equals(_queryFor, _text, StringComparison.Ordinal))
             {
                 _queryFor = _text;
-                _query = Query.Parse(_text);
+                _query = Query.Parse(_text, _names);
             }
 
             return _query;
@@ -243,8 +260,7 @@ internal sealed class Palette
         }
 
         string name = chosen == _contextEntry ? _context.Shown : chosen.Shown;
-        var query = Query.Parse(_text);
-        _text = query.Count is int count ? $"{count.ToString(CultureInfo.InvariantCulture)} {name}" : name;
+        _text = Query.Complete(_text, name, _names);
         _cursorToEnd = true;
     }
 
@@ -362,7 +378,7 @@ internal sealed class Palette
 
         if (_results.Count == 0)
         {
-            GUI.Label(area, Query.Parse(_text).Text.Length == 0 ? "The chests in reach hold nothing to take" : "Nothing found", Skin.Hint);
+            GUI.Label(area, Parsed.Text.Length == 0 ? "The chests in reach hold nothing to take" : "Nothing found", Skin.Hint);
             return;
         }
 
@@ -421,7 +437,7 @@ internal sealed class Palette
             _count = StartCount(chosen);
         }
 
-        int? typed = Query.Parse(_text).Count;
+        int? typed = Parsed.Count;
         GUI.Label(new Rect(area.x + 4f, area.y, 70f, area.height), "Count", Skin.Name);
         var track = new Rect(area.x + 80f, area.y + 10f, area.width - 320f, area.height - 20f);
         _count = Slider(track, typed ?? _count, 1f, MaxCount(chosen), typed == null);
