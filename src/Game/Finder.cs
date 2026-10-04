@@ -62,6 +62,11 @@ internal static class Finder
             Highlighter.Light(chest, LitFor);
         }
 
+        if (lit.Count > 0)
+        {
+            Sound.Play(Sound.Cue.Find);
+        }
+
         LastLit = lit;
         LastLines = Locate.Lines(parts, radius, Text.Shown);
         Notice.Say(player, LastLines);

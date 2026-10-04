@@ -1,4 +1,4 @@
-﻿using BepInEx.Configuration;
+using BepInEx.Configuration;
 using Rummage.Core;
 using UnityEngine;
 
@@ -47,6 +47,8 @@ internal static class Settings
 
     public static ConfigEntry<Messages> Messages { get; private set; }
 
+    public static ConfigEntry<bool> PlaySounds { get; private set; }
+
     public static void Bind(ConfigFile config)
     {
         Key = config.Bind("Keys", "Key", KeyCode.J,
@@ -89,6 +91,8 @@ internal static class Settings
         Messages = config.Bind("Display", "Messages", Core.Messages.Full,
             "What you read after Key takes: Full (what was taken, and why anything is short), Short (what was taken and what is short) or Off. "
             + "What finding turns up is always told.");
+        PlaySounds = config.Bind("Display", "PlaySounds", true,
+            "Play a short sound when the search box opens or closes, when Key takes something and when finding lights up chests. Only you hear them, at the game's own sound effects volume.");
     }
 
     /// <summary>
@@ -104,7 +108,7 @@ internal static class Settings
         var entries = new ConfigEntryBase[]
         {
             Key, Modifier, SearchKey, KeyAloneOpensSearch, TakeForRecipes, TakeForPieces, TopUpStacks, TopUpAmount,
-            ShowItems, ShowPieces, ShowRecipes, FindRadius, Rows, Scale, BuildBox, Messages,
+            ShowItems, ShowPieces, ShowRecipes, FindRadius, Rows, Scale, BuildBox, Messages, PlaySounds,
         };
         var saved = new object[entries.Length];
         for (int i = 0; i < entries.Length; i++)

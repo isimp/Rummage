@@ -37,7 +37,6 @@ internal static class Skin
 
     public static GUIStyle Line { get; private set; }
 
-    public static GUIStyle Title { get; private set; }
 
     public static GUIStyle Chosen { get; private set; }
 
@@ -68,7 +67,7 @@ internal static class Skin
 
         Build();
         var sample = new GUIContent(Sample);
-        foreach (var style in new[] { Field, Name, Detail, Hint, Button, Line, Chosen, Title })
+        foreach (var style in new[] { Field, Name, Detail, Hint, Button, Line, Chosen })
         {
             style.CalcSize(sample);
         }
@@ -84,7 +83,6 @@ internal static class Skin
         }
 
         var font = GameFont("AveriaSerifLibre-Regular");
-        var heading = GameFont("Norsebold") ?? GameFont("Norse") ?? font;
         Box = new GUIStyle(GUI.skin.box) { normal = { background = Fill(Back) }, border = new RectOffset(0, 0, 0, 0) };
         Field = new GUIStyle(GUI.skin.textField)
         {
@@ -102,7 +100,6 @@ internal static class Skin
         Detail = Label(font, 15, UiArt.Beige, TextAnchor.MiddleRight);
         Chosen = Label(font, 18, UiArt.Orange, TextAnchor.MiddleLeft);
         DetailLeft = Label(font, 15, UiArt.Beige, TextAnchor.MiddleLeft);
-        Title = Label(heading, 30, UiArt.Orange, TextAnchor.MiddleCenter);
         Hint = Label(font, 14, Faint, TextAnchor.MiddleLeft);
         Line = Label(font, 16, Text, TextAnchor.MiddleCenter);
         Button = Label(font, 18, UiArt.Orange, TextAnchor.MiddleCenter);

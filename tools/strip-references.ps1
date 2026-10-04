@@ -52,6 +52,7 @@ $sources = @(
     (Join-Path $managed "UnityEngine.dll"),
     (Join-Path $managed "UnityEngine.CoreModule.dll"),
     (Join-Path $managed "UnityEngine.PhysicsModule.dll"),
+    (Join-Path $managed "UnityEngine.AudioModule.dll"),
     (Join-Path $managed "UnityEngine.InputLegacyModule.dll"),
     (Join-Path $managed "UnityEngine.IMGUIModule.dll"),
     (Join-Path $managed "UnityEngine.TextRenderingModule.dll"),

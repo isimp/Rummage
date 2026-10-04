@@ -24,7 +24,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string Guid = "isimp.Rummage";
     public const string Name = "Rummage";
-    public const string Version = "0.1.0";
+    public const string Version = "0.1.1";
 
     private readonly Grabber _grabber = new();
     private readonly BuildReadout _readout = new();
@@ -67,6 +67,7 @@ public sealed class Plugin : BaseUnityPlugin
 
     private void Update()
     {
+        Sound.Prepare();
         _grabber.Tick(Time.time);
         Highlighter.Tick(Time.time);
         _readout.Tick(Player.m_localPlayer, Time.time, Settings.Key.Value.ToString(), Settings.TakeForPieces.Value ? Settings.BuildBox.Value : Core.BuildBox.Never);
@@ -138,6 +139,7 @@ public sealed class Plugin : BaseUnityPlugin
 
     private void OnDestroy()
     {
+        Sound.Mute();
         if (Palette.IsOpen)
         {
             _palette.Close();

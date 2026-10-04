@@ -93,6 +93,7 @@ internal sealed class Grabber
         }
 
         var bag = player.GetInventory();
+        ExplainNewStacks(plan, scene);
         var took = new Dictionary<string, int>();
         var asked = new Dictionary<string, int>();
         var waitingFor = new List<(int X, int Y)>();
@@ -132,6 +133,11 @@ internal sealed class Grabber
         foreach (var chest in touched)
         {
             Highlighter.Light(chest, 2f);
+        }
+
+        if (took.Count > 0 || asked.Count > 0)
+        {
+            Sound.Play(Sound.Cue.Take);
         }
 
         LastLines = Report.Lines(target.Label, plan, new Done(took, asked, changed, refused), Text.Shown, MucLink.Ready, Settings.Messages.Value);
@@ -213,6 +219,37 @@ internal sealed class Grabber
 
         amount = move.Amount;
         return Taken.Asked;
+    }
+
+    /// <summary>
+    /// Logs a take planned into an empty slot while a stack of the same item in the inventory still
+    /// has room after the grab, with what keeps the two apart: the game stacks only items of the same world
+    /// level, and of the same quality for items with quality levels.
+    /// </summary>
+    private static void ExplainNewStacks(Plan plan, Scene scene)
+    {
+        var bag = scene.Bag;
+        foreach (var move in plan.Moves)
+        {
+            if (bag.Stacks.Any(s => s.X == move.ToX && s.Y == move.ToY))
+            {
+                continue;
+            }
+
+            var open = bag.Stacks.FirstOrDefault(s => s.Name == move.Name
+                && s.Count + plan.Moves.Where(m => m.ToX == s.X && m.ToY == s.Y).Sum(m => m.Amount) < s.MaxStack);
+            if (open != null)
+            {
+                Plugin.Log.LogInfo($"{Text.Shown(move.Name)} goes to a new stack at ({move.ToX},{move.ToY}) beside the one at ({open.X},{open.Y}) "
+                    + $"({open.Count}/{open.MaxStack}, world level {open.WorldLevel}, quality {open.Quality}); the chest's stack is {From(scene, move)}.");
+            }
+        }
+    }
+
+    private static string From(Scene scene, Move move)
+    {
+        var stack = scene.Sources.FirstOrDefault(s => s.Id == move.SourceId)?.Stacks.FirstOrDefault(s => s.X == move.FromX && s.Y == move.FromY);
+        return stack == null ? "not known" : $"world level {stack.WorldLevel}, quality {stack.Quality}";
     }
 
     private static int CountAt(Inventory bag, int x, int y, string name)

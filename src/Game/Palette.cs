@@ -114,6 +114,7 @@ internal sealed class Palette
         _focusFrames = 3;
         _cursorToEnd = true;
         IsOpen = true;
+        Sound.Play(Sound.Cue.Open);
         Rank();
     }
 
@@ -222,6 +223,7 @@ internal sealed class Palette
         {
             case KeyCode.Escape:
                 Close();
+                Sound.Play(Sound.Cue.Close);
                 break;
             case KeyCode.Return:
             case KeyCode.KeypadEnter:
@@ -328,7 +330,7 @@ internal sealed class Palette
 
         float x = (Screen.width / scale - Width) / 2f;
         int rows = Math.Min(VisibleRows, Math.Max(1, _results.Count));
-        var panel = new Rect(x, Top, Width, rows * RowHeight + 244f);
+        var panel = new Rect(x, Top, Width, rows * RowHeight + 206f);
         if (!UiArt.Sliced(panel, "woodpanel_settings", Color.white))
         {
             GUI.Box(panel, GUIContent.none, Skin.Box);
@@ -336,10 +338,9 @@ internal sealed class Palette
 
         float inner = x + Pad;
         float width = Width - 2f * Pad;
-        GUI.Label(new Rect(inner, Top + 14f, width, 38f), "Rummage", Skin.Title);
-        GUI.DrawTexture(new Rect(inner - 12f, Top + 52f, width + 24f, panel.height - 52f - (Pad - 12f)), Skin.InnerFill);
-        DrawField(new Rect(inner, Top + 58f, width, 38f));
-        float y = Top + 104f;
+        GUI.DrawTexture(new Rect(inner - 12f, Top + 14f, width + 24f, panel.height - 14f - (Pad - 12f)), Skin.InnerFill);
+        DrawField(new Rect(inner, Top + 20f, width, 38f));
+        float y = Top + 66f;
         DrawRows(new Rect(inner, y, width, rows * RowHeight), player);
         if (!IsOpen)
         {
