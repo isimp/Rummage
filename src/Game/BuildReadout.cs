@@ -150,7 +150,7 @@ internal sealed class BuildReadout
         var box = new GameObject("Rummage", typeof(RectTransform), typeof(UnityEngine.UI.Image));
         box.transform.SetParent(hud.m_buildHud.transform, false);
         box.GetComponent<UnityEngine.UI.Image>().color = new Color(0f, 0f, 0f, 0.62f);
-        ((RectTransform)box.transform).pivot = new Vector2(0f, 1f);
+        ((RectTransform)box.transform).pivot = new Vector2(0f, 0f);
 
         var copy = Object.Instantiate(description.gameObject, box.transform);
         copy.name = "Text";
@@ -176,18 +176,16 @@ internal sealed class BuildReadout
 
         _line = copy.GetComponent<TMP_Text>();
         _line.richText = true;
-        _line.enableWordWrapping = true;
+        _line.enableWordWrapping = false;
         _line.overflowMode = TextOverflowModes.Overflow;
         _line.fontSize = description.fontSize * 0.9f;
         return _line;
     }
 
     /// <summary>
-    /// Puts the box to the right of the piece's cost icons, level with the top of that row: below
-    /// the panel sit the game's key hints, so the space beside the costs is the free one. It is as
-    /// wide as its longest line, so each line stays on one row, but never past the screen's right
-    /// edge; only a line wider than that wraps. With no cost icons showing, it goes below the
-    /// description instead.
+    /// Puts the box just above the build panel, left-aligned with it: below the panel sit the
+    /// game's key hints and beside the costs their labels, while above it is the world. The lines
+    /// never wrap; the box is as wide and as tall as its text.
     /// </summary>
     private static void Place(TMP_Text line)
     {
@@ -198,6 +196,9 @@ internal sealed class BuildReadout
         float right = float.MinValue;
         float top = float.MinValue;
         float bottom = float.MaxValue;
+        Grow(hud.m_buildSelection ? hud.m_buildSelection.rectTransform : null, ref left, ref right, ref top, ref bottom);
+        Grow(hud.m_pieceDescription.rectTransform, ref left, ref right, ref top, ref bottom);
+        Grow(hud.m_buildIcon ? hud.m_buildIcon.rectTransform : null, ref left, ref right, ref top, ref bottom);
         foreach (var item in hud.m_requirementItems)
         {
             if (item && item.activeInHierarchy)
@@ -209,41 +210,13 @@ internal sealed class BuildReadout
             }
         }
 
-        Vector3 corner;
-        if (right > float.MinValue)
-        {
-            corner = parent.InverseTransformPoint(new Vector3(right, top, 0f));
-            corner.x += 14f;
-        }
-        else
-        {
-            float l = float.MaxValue, r = float.MinValue, t = float.MinValue, b = float.MaxValue;
-            Grow(hud.m_pieceDescription.rectTransform, ref l, ref r, ref t, ref b);
-            corner = parent.InverseTransformPoint(new Vector3(l, b, 0f));
-            corner.y -= 6f;
-        }
-
-        float natural = line.GetPreferredValues(line.text).x + 16f;
-        float room = float.MaxValue;
-        var screen = parent;
-        while (screen.parent is RectTransform above)
-        {
-            screen = above;
-        }
-
-        if (screen != parent)
-        {
-            screen.GetWorldCorners(Corners);
-            room = parent.InverseTransformPoint(Corners[2]).x - corner.x - 12f;
-        }
-
-        float width = Mathf.Max(160f, Mathf.Min(natural, room));
-        float height = line.GetPreferredValues(line.text, width - 16f, 0f).y + 8f;
+        var corner = parent.InverseTransformPoint(new Vector3(left, top, 0f));
+        var size = line.GetPreferredValues(line.text);
         box.anchorMin = box.anchorMax = new Vector2(0.5f, 0.5f);
-        box.sizeDelta = new Vector2(width, height);
-        box.localPosition = new Vector3(corner.x, corner.y, 0f);
+        box.pivot = new Vector2(0f, 0f);
+        box.sizeDelta = new Vector2(size.x + 16f, size.y + 8f);
+        box.localPosition = new Vector3(corner.x, corner.y + 6f, 0f);
     }
-
     private static void Grow(RectTransform part, ref float left, ref float right, ref float top, ref float bottom)
     {
         if (!part || !part.gameObject.activeInHierarchy)
