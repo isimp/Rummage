@@ -14,29 +14,64 @@ internal static class Readout
     /// <summary>For what cannot be had: not carried and not in the chests.</summary>
     public const string Missing = "#E8604C";
 
+    /// <summary>For the header row of the build panel's table.</summary>
+    public const string Header = "#A89F91";
+
+    /// <summary>The space after each column of the build panel's table, in text units.</summary>
+    private const float Gap = 24f;
+
     /// <summary>
-    /// The text under the selected piece in the game's build panel: what the inventory holds of
-    /// each part against what the next press is for (orange where the press would bring it, red
-    /// where it cannot be had), then what that press would bring and what would still be short.
+    /// The table beside the game's build panel: a header naming the count and the key, then one
+    /// row per part with what the inventory holds against what the next press is for (orange
+    /// where the press would make it up, red where it cannot) and what the press would take.
+    /// Columns start after the widest entry before them, measured by <paramref name="width"/> in
+    /// the text's own units.
     /// </summary>
-    public static string Panel(Plan plan, int count, string key, Func<string, string> shown)
+    public static string Panel(Plan plan, int count, string key, Func<string, string> shown, Func<string, float> width)
     {
-        var parts = plan.Outcomes.Select(o =>
+        var rows = plan.Outcomes.Select(o => (Name: shown(o.Name), Carried: $"{Number(o.Carried)} / {Number(o.Wanted)}", Outcome: o)).ToList();
+        string head = $"For {Number(count)}";
+        float carriedAt = rows.Select(r => width(r.Name)).Append(width(head)).Max() + Gap;
+        float takesAt = carriedAt + rows.Select(r => width(r.Carried)).Append(width("carried")).Max() + Gap;
+        string carriedPos = $"<pos={Position(carriedAt)}>";
+        string takesPos = $"<pos={Position(takesAt)}>";
+
+        var lines = new List<string> { $"<color={Header}>{head}{carriedPos}carried{takesPos}{key} takes</color>" };
+        foreach (var (name, carried, o) in rows)
         {
-            string part = $"{shown(o.Name)} {Number(o.Carried)}/{Number(o.Wanted)}";
-            return o.Need == 0 ? part : $"<color={(o.Short > 0 ? Missing : Coming)}>{part}</color>";
-        });
-        string bag = $"{(count > 1 ? $"For {Number(count)} · in your bag" : "In your bag")}: {string.Join(" · ", parts)}";
-        if (plan.Outcomes.All(o => o.Need == 0))
-        {
-            return $"{bag}\nYou carry it all";
+            string have = o.Need == 0 ? carried : Paint(o.Short > 0 ? Missing : Coming, carried);
+            lines.Add($"{name}{carriedPos}{have}{takesPos}{Takes(o)}");
         }
 
-        var brings = plan.Outcomes.Where(o => o.Planned > 0).Select(o => $"{Number(o.Planned)} {shown(o.Name)}").ToList();
-        var shorts = plan.Outcomes.Where(o => o.Short > 0).Select(o => shown(o.Name)).ToList();
-        string press = $"{key} brings {(brings.Count > 0 ? string.Join(", ", brings) : "nothing")}";
-        return shorts.Count > 0 ? $"{bag}\n{press} · short: {string.Join(", ", shorts)}" : $"{bag}\n{press}";
+        if (plan.Outcomes.All(o => o.Need == 0))
+        {
+            lines.Add("You carry it all");
+        }
+
+        return string.Join("\n", lines);
     }
+
+    /// <summary>A part's last column: how many the press takes, and how many would still be short.</summary>
+    private static string Takes(Outcome o)
+    {
+        if (o.Need == 0)
+        {
+            return "";
+        }
+
+        if (o.Planned == 0)
+        {
+            return Paint(Missing, "none");
+        }
+
+        string takes = Paint(Coming, Number(o.Planned));
+        return o.Short > 0 ? $"{takes} · {Paint(Missing, $"{Number(o.Short)} short")}" : takes;
+    }
+
+    private static string Paint(string color, string text) => $"<color={color}>{text}</color>";
+
+    private static string Position(float at) => at.ToString("0", CultureInfo.InvariantCulture);
+
     /// <summary>A piece's or recipe's parts in the search box: carried, plus what the chests give, against what the count needs.</summary>
     public static string Parts(IReadOnlyDictionary<string, int> cost, int count, IReadOnlyDictionary<string, int> carried,
         IReadOnlyDictionary<string, int> takeable, Func<string, string> shown)

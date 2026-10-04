@@ -65,40 +65,70 @@ public class SummaryTests
         Assert.Equal(["Portal: Wood 12/10 · you carry it all"], Pressed(plan));
     }
 
+    /// <summary>Text width for the panel's columns: ten units a character.</summary>
+    private static float Width(string text) => text.Length * 10f;
+
+    private static string[] PanelRows(Plan plan, int count) => Readout.Panel(plan, count, "J", Shown, Width).Split('\n');
+
     [Fact]
-    public void TheBuildPanelShowsYourBagAndWhatThePressWouldBring()
+    public void TheBuildPanelIsATableOfWhatYouCarryAndWhatTheKeyTakes()
     {
-        var plan = Plan(Inventory(Stack(Wood, 7)), false, [Part(Wood, 10), Part(Stone, 4), Part(Cores, 2)],
+        var plan = Plan(Inventory(Stack(Wood, 7)), false, [Part(Wood, 10), Part(Stone, 4)],
             Chest(1, 5, Stack(Wood, 50), Stack(Stone, 50, x: 1)));
 
+        // The names column is as wide as "For 1" or the longest name, the carried column as wide as
+        // "carried" or its longest entry, each with a gap of 24 after it.
         Assert.Equal(
-            "In your bag: <color=#FFA13C>Wood 7/10</color> · <color=#FFA13C>Stone 0/4</color> · <color=#E8604C>Surtling core 0/2</color>\n"
-            + "J brings 3 Wood, 4 Stone · short: Surtling core",
-            Readout.Panel(plan, 1, "J", Shown));
+        [
+            "<color=#A89F91>For 1<pos=74>carried<pos=168>J takes</color>",
+            "Wood<pos=74><color=#FFA13C>7 / 10</color><pos=168><color=#FFA13C>3</color>",
+            "Stone<pos=74><color=#FFA13C>0 / 4</color><pos=168><color=#FFA13C>4</color>",
+        ], PanelRows(plan, 1));
     }
 
     [Fact]
-    public void ForMoreThanOneThePanelSaysHowMany()
+    public void APartTheChestsCannotGiveSaysNone()
     {
-        var plan = Plan(Inventory(Stack(Wood, 10)), false, [Part(Wood, 20)], Chest(1, 5, Stack(Wood, 50)));
+        var plan = Plan(Inventory(Stack(Stone, 20), Stack(Cores, 5, x: 1)), false, [Part(Stone, 40), Part(Cores, 10)]);
 
-        Assert.Equal("For 2 · in your bag: <color=#FFA13C>Wood 10/20</color>\nJ brings 10 Wood", Readout.Panel(plan, 2, "J", Shown));
+        Assert.Equal(
+        [
+            "<color=#A89F91>For 2<pos=154>carried<pos=248>J takes</color>",
+            "Stone<pos=154><color=#E8604C>20 / 40</color><pos=248><color=#E8604C>none</color>",
+            "Surtling core<pos=154><color=#E8604C>5 / 10</color><pos=248><color=#E8604C>none</color>",
+        ], PanelRows(plan, 2));
     }
 
     [Fact]
-    public void WithEverythingCarriedThePanelSaysSo()
+    public void APartTheChestsGiveOnlySomeOfSaysHowManyStayShort()
     {
-        var plan = Plan(Inventory(Stack(Wood, 10)), false, [Part(Wood, 10)], Chest(1, 5, Stack(Wood, 50)));
+        var plan = Plan(Inventory(), false, [Part(Stone, 4)], Chest(1, 5, Stack(Stone, 2)));
 
-        Assert.Equal("In your bag: Wood 10/10\nYou carry it all", Readout.Panel(plan, 1, "J", Shown));
+        Assert.Equal("Stone<pos=74><color=#E8604C>0 / 4</color><pos=168><color=#FFA13C>2</color> · <color=#E8604C>2 short</color>",
+            PanelRows(plan, 1)[1]);
     }
 
     [Fact]
-    public void WhenThePressWouldBringNothingThePanelSaysWhatIsShort()
+    public void WithEverythingCarriedThePanelSaysSoAndTakesNothing()
     {
-        var plan = Plan(Inventory(), false, [Part(Cores, 2)]);
+        var plan = Plan(Inventory(Stack(Wood, 10), Stack(Stone, 4, x: 1)), false, [Part(Wood, 10), Part(Stone, 4)],
+            Chest(1, 5, Stack(Wood, 50)));
 
-        Assert.Equal("In your bag: <color=#E8604C>Surtling core 0/2</color>\nJ brings nothing · short: Surtling core", Readout.Panel(plan, 1, "J", Shown));
+        Assert.Equal(
+        [
+            "<color=#A89F91>For 1<pos=74>carried<pos=168>J takes</color>",
+            "Wood<pos=74>10 / 10<pos=168>",
+            "Stone<pos=74>4 / 4<pos=168>",
+            "You carry it all",
+        ], PanelRows(plan, 1));
+    }
+
+    [Fact]
+    public void ThePanelNamesTheKeyAsSet()
+    {
+        var plan = Plan(Inventory(), false, [Part(Wood, 10)], Chest(1, 5, Stack(Wood, 50)));
+
+        Assert.StartsWith("<color=#A89F91>For 1<pos=74>carried<pos=168>F7 takes</color>", Readout.Panel(plan, 1, "F7", Shown, Width));
     }
 
     [Fact]

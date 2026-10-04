@@ -197,14 +197,15 @@ internal sealed class Tests
             _checks.Check(Grabber.LastLines.Count > 0 && Grabber.LastLines[0].StartsWith(expect, StringComparison.Ordinal), $"press {press}: the summary reads \"{expect}\"", string.Join(" | ", Grabber.LastLines));
         }
 
-        var next = Context.PieceTarget(_player);
-        var scene = Scene.Read(_player);
-        string line = Readout.Panel(Planner.Make(next.Wants(), scene.Sources, scene.Bag, CraftyLink.LeaveOne), next.Count, "J", Text.Shown);
-        _checks.Check(line.Contains($"Wood {cost * 2}/{cost * 3}") && line.Contains($"J brings {cost} Wood"), "while building, the panel text shows the bag and what the next press brings", line);
         Plugin.Instance.BuildLine.Refresh();
         yield return Frames(5);
         var shown = Hud.instance && Hud.instance.m_buildHud ? Hud.instance.m_buildHud.transform.Find("Rummage/Text")?.GetComponent<TMPro.TMP_Text>() : null;
-        _checks.Check(shown && shown.gameObject.activeInHierarchy && shown.text.Contains("in your bag"), "the text shows in the game's build panel", shown ? shown.text : "not there");
+        string table = shown ? shown.text : "";
+        string wood = table.Split('\n').FirstOrDefault(row => row.StartsWith("Wood<pos=", StringComparison.Ordinal)) ?? "";
+        _checks.Check(shown && shown.gameObject.activeInHierarchy && table.StartsWith($"<color={Readout.Header}>For 3", StringComparison.Ordinal) && table.Contains(" takes</color>"),
+            "the table shows beside the game's build panel, for 3", shown ? table : "not there");
+        _checks.Check(wood.Contains($">{cost * 2} / {cost * 3}</color>") && wood.EndsWith($">{cost}</color>", StringComparison.Ordinal),
+            "its wood row shows what you carry against 3 and what the next press takes", wood.Length > 0 ? wood : table);
 
         yield return CountingPastAMissingPart();
         _site.PutHandsBack();

@@ -6,9 +6,9 @@ using UnityEngine;
 namespace Rummage.Game;
 
 /// <summary>
-/// Two lines beside the game's build panel, for the piece the panel
-/// shows (the one under the cursor in the build menu, else the one being placed): what the
-/// inventory holds of each part against the next press, and what that press would bring.
+/// A small table beside the game's build panel, for the piece the panel shows (the one under the
+/// cursor in the build menu, else the one being placed): what the inventory holds of each part
+/// against the next press, and what that press would take.
 /// Looked at twice a second and right after a press; worked out again only when something it
 /// depends on changed (the piece, the inventory, the chests' contents or holders, the settings),
 /// as the plan a press would make, so it never says more than the key would do. The text is a
@@ -66,9 +66,9 @@ internal sealed class BuildReadout
         }
 
         var plan = Planner.Make(target.Wants(), scene.Sources, scene.Bag, CraftyLink.LeaveOne);
-        string text = Readout.Panel(plan, target.Count, key, Game.Text.Shown);
         if (Line() is TMP_Text line)
         {
+            string text = Readout.Panel(plan, target.Count, key, Game.Text.Shown, part => line.GetPreferredValues(part).x);
             if (line.text != text)
             {
                 line.text = text;
