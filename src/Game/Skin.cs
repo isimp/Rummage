@@ -22,6 +22,9 @@ internal static class Skin
     private static bool _built;
     private static bool _warmed;
 
+    /// <summary>Whether the fonts have been warmed in a world yet.</summary>
+    public static bool Warmed => _warmed;
+
     public static GUIStyle Box { get; private set; }
 
     public static GUIStyle Field { get; private set; }

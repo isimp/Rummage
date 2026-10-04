@@ -33,6 +33,12 @@ internal sealed class Palette
     private Entry _countFor;
     private float _count = 1f;
     private int _focusFrames;
+    private readonly Dictionary<Entry, string> _details = new();
+    private Entry _partsFor;
+    private int _partsCount = -1;
+    private string _parts = string.Empty;
+    private string _queryFor;
+    private Query _query;
     private bool _cursorToEnd;
 
     public Palette(Grabber grabber)
@@ -76,6 +82,8 @@ internal sealed class Palette
         _selected = 0;
         _first = 0;
         _countFor = null;
+        _details.Clear();
+        _partsFor = null;
         _focusFrames = 3;
         _cursorToEnd = true;
         IsOpen = true;
@@ -151,7 +159,22 @@ internal sealed class Palette
     /// <summary>The slider's top: what the chests give of an item, or how many of a piece or recipe can be paid for.</summary>
     private int MaxCount(Entry entry) => Math.Max(StartCount(entry), Math.Max(1, entry.InChests));
 
-    private int CountFor(Entry entry) => Query.Parse(_text).Count ?? Mathf.RoundToInt(_count);
+    private int CountFor(Entry entry) => Parsed.Count ?? Mathf.RoundToInt(_count);
+
+    /// <summary>The search text parsed once per change rather than on every drawing pass.</summary>
+    private Query Parsed
+    {
+        get
+        {
+            if (!string.Equals(_queryFor, _text, StringComparison.Ordinal))
+            {
+                _queryFor = _text;
+                _query = Query.Parse(_text);
+            }
+
+            return _query;
+        }
+    }
 
     private void Keys(Player player)
     {
@@ -271,7 +294,7 @@ internal sealed class Palette
         }
 
         y += rows * RowHeight + 8f;
-        GUI.Label(new Rect(inner + 4f, y, width - 8f, 26f), PartsOf(Chosen), Skin.DetailLeft);
+        GUI.Label(new Rect(inner + 4f, y, width - 8f, 26f), ChosenPartsCached(), Skin.DetailLeft);
         y += 32f;
         DrawCount(new Rect(inner, y, width, 36f), player);
         y += 44f;
@@ -454,6 +477,21 @@ internal sealed class Palette
 
         return false;
     }
+    /// <summary>The chosen entry's parts line, made again only when the entry or its count changed.</summary>
+    private string ChosenPartsCached()
+    {
+        var chosen = Chosen;
+        int count = chosen == null ? 0 : CountFor(chosen);
+        if (chosen != _partsFor || count != _partsCount)
+        {
+            _partsFor = chosen;
+            _partsCount = count;
+            _parts = PartsOf(chosen);
+        }
+
+        return _parts;
+    }
+
     /// <summary>
     /// For the chosen entry: an item as carried and in the chests; a piece or recipe part by part,
     /// carried plus in the chests against what the count needs, short parts marked.
@@ -476,6 +514,17 @@ internal sealed class Palette
     }
 
     private string Detail(Entry entry)
+    {
+        if (!_details.TryGetValue(entry, out string text))
+        {
+            text = DetailText(entry);
+            _details[entry] = text;
+        }
+
+        return text;
+    }
+
+    private string DetailText(Entry entry)
     {
         string many = entry.InChests.ToString("N0", CultureInfo.InvariantCulture);
         if (entry == _contextEntry)

@@ -30,6 +30,15 @@ It is drawn in the game's own art (`Game/UiArt.cs`): sprites from the game's `UI
 
 While it is open, `TextInput.IsVisible` answers yes, which stops the player's movement, actions, chat and menu and frees the cursor. The inventory's update waits, as it reads Tab, Escape and the use key without that check, and the mouse wheel reads nothing outside the box. Each of these patches stands aside for the session if it ever fails.
 
+## Cost
+
+Measured by the self-test's last part on the player's own chests (`how long things take` in the log). What is done to keep it low:
+
+- The build panel lines are looked at twice a second, but worked out again only when a fingerprint of what they depend on changes: the piece, every inventory stack, each chest in reach with its data revision and holder, and the settings that change a plan. When they are worked out, the chests are read once for both the count and the plan, and the text is set only when it differs.
+- The search list keeps every known piece and recipe with its cost and icon between openings, made again only when the known recipes or materials, the player, the world's item list or the language change; an opening reads only the chests' stock and works out what each entry can pay for.
+- The search box draws through a component switched on only while it is open (and once early in a world, to warm the fonts), so Unity's GUI pass does not run for Rummage otherwise. Row texts and the parts line are made once per change, not on every drawing pass.
+- The shortfall scan reads AzuCraftyBoxes' own registry for the chests it knows and makes one physics query over the building-piece and cart layers, into a reused buffer, for the rest.
+
 ## Who may change a chest
 
 The game saves a chest only in the game that holds it (its ZDO owner). A change made anywhere else is lost the next time the chest reloads, while the items would already be in the player's inventory. So:

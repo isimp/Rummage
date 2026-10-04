@@ -25,13 +25,16 @@ internal sealed class Scene
 
     public static ZNetView View(Container chest) => ViewOf(chest);
 
-    public static Scene Read(Player player)
+    public static Scene Read(Player player) => Read(player, CraftyLink.NearbyChests(player));
+
+    /// <summary>The scene from a list of chests AzuCraftyBoxes already gave.</summary>
+    public static Scene Read(Player player, List<Container> nearby)
     {
         var sources = new List<Source>();
         var chests = new Dictionary<int, Container>();
         var here = player.transform.position;
 
-        foreach (var chest in CraftyLink.NearbyChests(player))
+        foreach (var chest in nearby)
         {
             var inventory = chest.GetInventory();
             var view = View(chest);
@@ -51,20 +54,40 @@ internal sealed class Scene
         return new Scene(sources, chests, new Bag(bag.GetWidth(), bag.GetHeight(), Stacks(bag), ExtraSlotsLink.IsOrdinarySlot));
     }
 
+    /// <summary>The layers building pieces and carts are on; chests are one of the two.</summary>
+    private static readonly int ChestLayers = LayerMask.GetMask("piece", "piece_nonsolid", "vehicle");
+
+    /// <summary>Reused for every scan, so a scan makes no garbage of its own.</summary>
+    private static readonly Collider[] Hits = new Collider[4096];
+
     /// <summary>
     /// Adds the chests in reach that AzuCraftyBoxes does not let the player use, read only to
     /// say why something is missing: one someone else has open or a cart someone pulls, someone
     /// else's private chest, or one kept out for another reason (a ward, a seal, a setting).
-    /// Only chests players built count, as AzuCraftyBoxes counts them.
+    /// Only chests players built count, as AzuCraftyBoxes counts them. AzuCraftyBoxes' own
+    /// registry names most of them; one physics query over building pieces and carts finds the
+    /// ones it never registered, such as other players' private chests.
     /// </summary>
     public void AddBarred(Player player)
     {
         var listed = new HashSet<Container>(Chests.Values);
         var seen = new HashSet<Container>();
         var here = player.transform.position;
-        foreach (var collider in Physics.OverlapSphere(here, CraftyLink.Range))
+        float range = CraftyLink.Range;
+        var candidates = new List<Container>(CraftyLink.Registered(here, range));
+        int hits = Physics.OverlapSphereNonAlloc(here, range, Hits, ChestLayers);
+        for (int i = 0; i < hits; i++)
         {
-            var chest = collider ? collider.GetComponentInParent<Container>() : null;
+            var found = Hits[i] ? Hits[i].GetComponentInParent<Container>() : null;
+            Hits[i] = null;
+            if (found)
+            {
+                candidates.Add(found);
+            }
+        }
+
+        foreach (var chest in candidates)
+        {
             if (!chest || !seen.Add(chest) || listed.Contains(chest) || (CraftyLink.OnlyChests != null && !CraftyLink.OnlyChests(chest)))
             {
                 continue;

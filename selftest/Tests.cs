@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using BepInEx.Bootstrap;
@@ -134,6 +135,7 @@ internal sealed class Tests
             yield return Part("the search box", SearchBox());
             yield return Part("a chest held by a game that never answers", NeverAnswers());
             yield return Part("a chest held by another player's game", AnotherPlayer());
+            yield return Part("how long things take", Timings());
         }
 
         _checks.Start("putting everything back");
@@ -554,6 +556,78 @@ internal sealed class Tests
         catch (Exception e)
         {
             _checks.Fail("explain why the test chests are not listed", $"{e.GetType().Name}: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Times each step on the chests really in reach, read only, and one grab on the test chests:
+    /// milliseconds each, roughly how much memory each made for the collector, and the sizes
+    /// involved. Notes only; what counts as slow depends on the machine.
+    /// </summary>
+    private IEnumerator Timings()
+    {
+        CraftyLink.OnlyChests = null;
+        var nearby = CraftyLink.NearbyChests(_player);
+        _checks.Note($"{nearby.Count} chests in reach holding {nearby.Sum(c => c.GetInventory()?.NrOfItems() ?? 0)} stacks, Leave One Item {(CraftyLink.LeaveOne ? "on" : "off")}");
+        var collider = _site.Main.GetComponentInChildren<Collider>();
+        _checks.Note($"a test chest sits on the layer {(collider ? LayerMask.LayerToName(collider.gameObject.layer) : "(none)")}");
+
+        Measure("reading the chests in reach", 20, () => Scene.Read(_player));
+        Catalog.Forget();
+        Measure("building the search list, first time", 1, () => Catalog.Build(_player, Scene.Read(_player)), warm: false);
+        Measure("building the search list, costs kept", 10, () => Catalog.Build(_player, Scene.Read(_player)));
+        var catalog = Catalog.Build(_player, Scene.Read(_player));
+        _checks.Note($"the search list holds {catalog.Entries.Count} entries ({catalog.Entries.Count(e => e.Kind == EntryKind.Item)} items, {catalog.Entries.Count(e => e.Kind == EntryKind.Piece)} pieces, {catalog.Entries.Count(e => e.Kind == EntryKind.Recipe)} recipes)");
+        foreach (string text in new[] { "w", "wo", "wood", "bronze nails", "wkb" })
+        {
+            Measure($"ranking \"{text}\"", 50, () => Search.Rank(text, catalog.Entries));
+        }
+
+        Measure("the shortfall scan", 10, () => Scene.Read(_player).AddBarred(_player));
+        var workbench = ZNetScene.instance.GetPrefab("piece_workbench")?.GetComponent<Piece>();
+        if (workbench)
+        {
+            var scene = Scene.Read(_player);
+            Measure("planning a press for the workbench", 50, () => Planner.Make(Target.ForPiece(workbench).Wants(), scene.Sources, scene.Bag, CraftyLink.LeaveOne));
+        }
+
+        var (worked, skipped) = Plugin.Instance.BuildLine.Counts;
+        _checks.Note($"the build panel lines were worked out {worked} times and left alone {skipped} times as nothing had changed");
+
+        CraftyLink.OnlyChests = chest => _site.Sources.Contains(chest);
+        var before = Snapshot();
+        var watch = Stopwatch.StartNew();
+        Grabber.Grab(_player, Target.ForItem(Site.Wood, "Wood", 5), Time.time);
+        watch.Stop();
+        _checks.Note($"a grab of 5 wood from the test chests: {watch.Elapsed.TotalMilliseconds:F2} ms");
+        yield return Idle();
+        Conserved(before);
+    }
+
+    /// <summary>Runs a step a number of times and notes its time and memory per run; a first untimed run warms it unless told not to.</summary>
+    private void Measure(string what, int times, Action step, bool warm = true)
+    {
+        try
+        {
+            if (warm)
+            {
+                step();
+            }
+
+            long memory = GC.GetTotalMemory(false);
+            var watch = Stopwatch.StartNew();
+            for (int i = 0; i < times; i++)
+            {
+                step();
+            }
+
+            watch.Stop();
+            long made = Math.Max(0, GC.GetTotalMemory(false) - memory);
+            _checks.Note($"{what}: {watch.Elapsed.TotalMilliseconds / times:F2} ms each, about {made / 1024.0 / times:F1} KB made each");
+        }
+        catch (Exception e)
+        {
+            _checks.Fail($"time {what}", $"{e.GetType().Name}: {e.Message}");
         }
     }
 

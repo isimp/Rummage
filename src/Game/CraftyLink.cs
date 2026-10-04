@@ -24,6 +24,7 @@ internal static class CraftyLink
 
     private static MethodInfo _nearby;
     private static MethodInfo _canPull;
+    private static HashSet<Container> _registry;
     private static ConfigEntryBase _leaveOne;
     private static ConfigEntryBase _range;
 
@@ -54,6 +55,8 @@ internal static class CraftyLink
             _nearby = api.GetMethod("GetNearbyContainers", BindingFlags.Public | BindingFlags.Static)
                 .MakeGenericMethod(typeof(Player));
             _canPull = api.GetMethod("CanItemBePulled", BindingFlags.Public | BindingFlags.Static, null, [typeof(string), typeof(string)], null);
+            _registry = info.Instance.GetType().Assembly.GetType("AzuCraftyBoxes.Util.Functions.Boxes")?
+                .GetField("Containers", BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null) as HashSet<Container>;
 
             var config = info.Instance.Config;
             _leaveOne = Entry(config, "Leave One Item");
@@ -115,6 +118,27 @@ internal static class CraftyLink
         }
 
         return chests;
+    }
+
+    /// <summary>
+    /// Every chest AzuCraftyBoxes has registered within range, whether or not it lets the player
+    /// use it now, read only; empty when the registry cannot be read.
+    /// </summary>
+    public static IEnumerable<Container> Registered(Vector3 here, float range)
+    {
+        if (_registry == null)
+        {
+            yield break;
+        }
+
+        float reach = range * range;
+        foreach (var chest in new List<Container>(_registry))
+        {
+            if (chest && (chest.transform.position - here).sqrMagnitude <= reach)
+            {
+                yield return chest;
+            }
+        }
     }
 
     /// <summary>Whether the chest's rules let the item, by prefab name, leave it.</summary>

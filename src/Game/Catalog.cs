@@ -51,12 +51,42 @@ internal sealed class Catalog
             catalog.Add(new Entry(item.Key, Text.Shown(item.Key), EntryKind.Item, item.Value), Target.ForItem(item.Key, Text.Shown(item.Key), 1));
         }
 
+        foreach (var (key, unit) in Costed(player))
+        {
+            catalog.Guarded(key, () => catalog.AddCosted(unit, key, carried, stock));
+        }
+
+        return catalog;
+    }
+
+    private static readonly HarmonyLib.AccessTools.FieldRef<Player, HashSet<string>> KnownRecipes = HarmonyLib.AccessTools.FieldRefAccess<Player, HashSet<string>>("m_knownRecipes");
+    private static readonly HarmonyLib.AccessTools.FieldRef<Player, HashSet<string>> KnownMaterials = HarmonyLib.AccessTools.FieldRefAccess<Player, HashSet<string>>("m_knownMaterial");
+    private static readonly List<(string Key, Target Unit)> CostedCache = new();
+    private static (int Db, long Player, int Recipes, int Materials, string Language) _costedFor;
+
+    /// <summary>
+    /// Every piece the build menus would show and every recipe the player knows, with what one
+    /// costs and its icon. These change only when the player learns something, so they are kept
+    /// between openings and made again only when the known recipes or materials, the player, the
+    /// world's item list or the language changed.
+    /// </summary>
+    private static List<(string Key, Target Unit)> Costed(Player player)
+    {
+        var key = (ObjectDB.instance ? ObjectDB.instance.GetInstanceID() : 0, player.GetPlayerID(),
+            KnownRecipes(player)?.Count ?? -1, KnownMaterials(player)?.Count ?? -1, Localization.instance?.GetSelectedLanguage() ?? string.Empty);
+        if (key == _costedFor && CostedCache.Count > 0)
+        {
+            return CostedCache;
+        }
+
+        _costedFor = key;
+        CostedCache.Clear();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var piece in KnownPieces(player))
         {
             if (seen.Add(piece.m_name))
             {
-                catalog.Guarded(piece.m_name, () => catalog.AddCosted(Target.ForPiece(piece), piece.m_name, carried, stock));
+                Read(piece.m_name, () => CostedCache.Add((piece.m_name, Target.ForPiece(piece))));
             }
         }
 
@@ -66,11 +96,29 @@ internal sealed class Catalog
             if (recipe && recipe.m_enabled && recipe.m_item && player.IsRecipeKnown(recipe.m_item.m_itemData.m_shared.m_name)
                 && seen.Add(recipe.m_item.m_itemData.m_shared.m_name))
             {
-                catalog.Guarded(recipe.name, () => catalog.AddCosted(Target.ForRecipe(recipe, 1, null, player, 1), recipe.m_item.m_itemData.m_shared.m_name, carried, stock));
+                Read(recipe.name, () => CostedCache.Add((recipe.m_item.m_itemData.m_shared.m_name, Target.ForRecipe(recipe, 1, null, player, 1))));
             }
         }
 
-        return catalog;
+        return CostedCache;
+    }
+
+    /// <summary>Forgets the kept pieces and recipes, so the next opening makes them again, as the self-test measures it.</summary>
+    internal static void Forget() => CostedCache.Clear();
+
+    private static void Read(string what, Action add)
+    {
+        try
+        {
+            add();
+        }
+        catch (Exception e)
+        {
+            if (Unreadable.Add(what))
+            {
+                Plugin.Log.LogWarning($"Left {what} out of the search box: {e.GetType().Name}: {e.Message}");
+            }
+        }
     }
 
     /// <summary>One piece or recipe that cannot be read is left out of the list, told once, rather than keeping the search box shut.</summary>

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Rummage.Core;
 using TMPro;
 using UnityEngine;
@@ -8,19 +9,28 @@ namespace Rummage.Game;
 /// Two lines under the piece description in the game's build panel, for the piece the panel
 /// shows (the one under the cursor in the build menu, else the one being placed): what the
 /// inventory holds of each part against the next press, and what that press would bring.
-/// Worked out twice a second and right after a press, as the plan a press would make, so it
-/// never says more than the key would do. The text is a copy of the game's own description text,
-/// so it has the game's font and look.
+/// Looked at twice a second and right after a press; worked out again only when something it
+/// depends on changed (the piece, the inventory, the chests' contents or holders, the settings),
+/// as the plan a press would make, so it never says more than the key would do. The text is a
+/// copy of the game's own description text, so it has the game's font and look.
 /// </summary>
 internal sealed class BuildReadout
 {
     private const float Every = 0.5f;
 
     private float _next;
+    private int _state;
     private TMP_Text _line;
 
+    /// <summary>How often the lines were worked out again, and how often a look found nothing changed, for the self-test.</summary>
+    internal (int Worked, int Skipped) Counts { get; private set; }
+
     /// <summary>Works the lines out again on the next tick, as after a press.</summary>
-    public void Refresh() => _next = 0f;
+    public void Refresh()
+    {
+        _next = 0f;
+        _state = 0;
+    }
 
     public void Tick(Player player, float now, string key, bool shown)
     {
@@ -30,20 +40,40 @@ internal sealed class BuildReadout
         }
 
         _next = now + Every;
-        string text = shown ? Text(player, key) : null;
-        if (text == null)
+        var piece = shown && player && !player.IsDead() && CraftyLink.Ready && player.InPlaceMode() ? Context.PieceInView(player) : null;
+        if (!piece)
         {
-            if (_line)
-            {
-                _line.gameObject.SetActive(false);
-            }
-
+            Hide();
             return;
         }
 
+        var nearby = CraftyLink.NearbyChests(player);
+        int state = State(piece, nearby, player, key);
+        if (state == _state && _line && _line.gameObject.activeSelf)
+        {
+            Counts = (Counts.Worked, Counts.Skipped + 1);
+            return;
+        }
+
+        _state = state;
+        Counts = (Counts.Worked + 1, Counts.Skipped);
+        var scene = Scene.Read(player, nearby);
+        var target = Context.PieceTarget(player, scene);
+        if (target == null || target.Cost.Count == 0)
+        {
+            Hide();
+            return;
+        }
+
+        var plan = Planner.Make(target.Wants(), scene.Sources, scene.Bag, CraftyLink.LeaveOne);
+        string text = Readout.Panel(plan, target.Count, key, Game.Text.Shown);
         if (Line() is TMP_Text line)
         {
-            line.text = text;
+            if (line.text != text)
+            {
+                line.text = text;
+            }
+
             line.gameObject.SetActive(true);
         }
     }
@@ -56,22 +86,43 @@ internal sealed class BuildReadout
         }
     }
 
-    private static string Text(Player player, string key)
+    private void Hide()
     {
-        if (!player || player.IsDead() || !CraftyLink.Ready || !player.InPlaceMode())
+        if (_line && _line.gameObject.activeSelf)
         {
-            return null;
+            _line.gameObject.SetActive(false);
         }
+    }
 
-        var target = Context.PieceTarget(player);
-        if (target == null || target.Cost.Count == 0)
+    /// <summary>
+    /// A fingerprint of everything the lines depend on: the piece, every stack in the inventory,
+    /// each chest in reach with its data revision (which moves whenever its contents are saved)
+    /// and its holder, and the settings that change a plan.
+    /// </summary>
+    private static int State(Piece piece, List<Container> nearby, Player player, string key)
+    {
+        unchecked
         {
-            return null;
-        }
+            int state = piece.GetInstanceID();
+            foreach (var item in player.GetInventory().GetAllItems())
+            {
+                state = state * 31 + (item.m_shared?.m_name?.GetHashCode() ?? 0);
+                state = state * 31 + item.m_stack;
+                state = state * 31 + item.m_gridPos.x * 64 + item.m_gridPos.y;
+            }
 
-        var scene = Scene.Read(player);
-        var plan = Planner.Make(target.Wants(), scene.Sources, scene.Bag, CraftyLink.LeaveOne);
-        return Readout.Panel(plan, target.Count, key, Game.Text.Shown);
+            foreach (var chest in nearby)
+            {
+                var zdo = Scene.View(chest) ? Scene.View(chest).GetZDO() : null;
+                state = state * 31 + chest.GetInstanceID();
+                state = state * 31 + (int)(zdo?.DataRevision ?? 0);
+                state = state * 31 + (zdo?.GetOwner().GetHashCode() ?? 0);
+            }
+
+            state = state * 31 + (CraftyLink.LeaveOne ? 1 : 0);
+            state = state * 31 + global::Game.m_worldLevel;
+            return state * 31 + key.GetHashCode();
+        }
     }
 
     /// <summary>

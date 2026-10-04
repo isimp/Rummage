@@ -24,6 +24,7 @@ public sealed class Plugin : BaseUnityPlugin
     private readonly BuildReadout _readout = new();
     private ConfigEntry<bool> _showLine;
     private Palette _palette;
+    private PaletteView _view;
     private ConfigEntry<KeyCode> _key;
     private Harmony _harmony;
 
@@ -42,6 +43,9 @@ public sealed class Plugin : BaseUnityPlugin
         Log = Logger;
         Instance = this;
         _palette = new Palette(_grabber);
+        _view = gameObject.AddComponent<PaletteView>();
+        _view.Palette = _palette;
+        _view.enabled = false;
         _key = Config.Bind("Keys", "Key", KeyCode.J,
             "Takes what the thing in front of you needs from the chests around you: the recipe selected in the crafting tab, "
             + "the build piece under the cursor in the build menu, or the piece you are placing. With nothing of the sort, it opens the search box; "
@@ -66,6 +70,11 @@ public sealed class Plugin : BaseUnityPlugin
     {
         _grabber.Tick(Time.time);
         _readout.Tick(Player.m_localPlayer, Time.time, _key.Value.ToString(), _showLine.Value);
+        bool drawing = Palette.IsOpen || (!Skin.Warmed && Player.m_localPlayer);
+        if (_view.enabled != drawing)
+        {
+            _view.enabled = drawing;
+        }
 
         if (Palette.IsOpen || !Input.GetKeyDown(_key.Value) || Held(KeyCode.LeftAlt, KeyCode.RightAlt, KeyCode.AltGr))
         {
@@ -103,8 +112,6 @@ public sealed class Plugin : BaseUnityPlugin
             player.Message(MessageHud.MessageType.TopLeft, "Rummage ran into an error; see the log");
         }
     }
-
-    private void OnGUI() => _palette.OnGUI();
 
     private void OnDestroy()
     {
