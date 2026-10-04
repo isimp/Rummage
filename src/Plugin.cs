@@ -69,6 +69,7 @@ public sealed class Plugin : BaseUnityPlugin
     private void Update()
     {
         _grabber.Tick(Time.time);
+        Highlighter.Tick(Time.time);
         _readout.Tick(Player.m_localPlayer, Time.time, _key.Value.ToString(), _showLine.Value);
         bool drawing = Palette.IsOpen || (!Skin.Warmed && Player.m_localPlayer);
         if (_view.enabled != drawing)

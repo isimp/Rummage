@@ -65,10 +65,10 @@ internal sealed class Palette
     internal string ChosenParts => PartsOf(Chosen);
 
     /// <summary>Enter, as the self-test presses it.</summary>
-    internal void TakeChosen(Player player)
+    internal void PressEnter(Player player)
     {
         Rank();
-        Take(player);
+        Enter(player);
     }
 
     /// <summary>Opens the search box, starting from what the player is looking at when there is something.</summary>
@@ -77,7 +77,7 @@ internal sealed class Palette
         _catalog = Catalog.Build(player, Scene.Read(player));
         _context = context;
         _contextEntry = context == null ? null : new Entry(string.Empty, context.Label, context.Kind, context.Count);
-        _text = context?.Shown ?? string.Empty;
+        _text = context == null ? string.Empty : $"{context.Count.ToString(CultureInfo.InvariantCulture)} {context.Shown}";
         _rankedFor = null;
         _selected = 0;
         _first = 0;
@@ -191,7 +191,7 @@ internal sealed class Palette
                 break;
             case KeyCode.Return:
             case KeyCode.KeypadEnter:
-                Take(player);
+                Enter(player);
                 break;
             case KeyCode.UpArrow:
                 Choose(_selected - 1);
@@ -248,6 +248,26 @@ internal sealed class Palette
         _cursorToEnd = true;
     }
 
+    /// <summary>With a number in the text, Enter takes that many; without one it finds where the chosen entry is.</summary>
+    private void Enter(Player player)
+    {
+        if (Parsed.Count != null)
+        {
+            Take(player);
+            return;
+        }
+
+        var chosen = Chosen;
+        var target = chosen == null ? null : TargetOf(chosen);
+        if (target == null || target.Cost.Count == 0)
+        {
+            return;
+        }
+
+        Close();
+        Finder.Find(player, target);
+    }
+
     private void Take(Player player)
     {
         var chosen = Chosen;
@@ -298,7 +318,7 @@ internal sealed class Palette
         y += 32f;
         DrawCount(new Rect(inner, y, width, 36f), player);
         y += 44f;
-        GUI.Label(new Rect(inner + 4f, y, width - 8f, 24f), "Enter take · Tab complete · ↑↓ choose · Esc close · type a number for the count", Skin.Hint);
+        GUI.Label(new Rect(inner + 4f, y, width - 8f, 24f), "Enter find · a number, then Enter, takes · Tab complete · ↑↓ choose · Esc close", Skin.Hint);
 
         GUI.matrix = matrix;
     }
@@ -369,7 +389,7 @@ internal sealed class Palette
                 _selected = index;
                 if (e.clickCount > 1)
                 {
-                    Take(player);
+                    Enter(player);
                 }
 
                 e.Use();

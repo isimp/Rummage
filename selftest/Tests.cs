@@ -371,9 +371,20 @@ internal sealed class Tests
         palette.Text = "workbench";
         string parts = palette.Results.Count > 0 && palette.Results[0].Kind == EntryKind.Piece ? palette.ChosenParts : "(no workbench listed)";
         _checks.Check(parts.Contains("Wood ") && parts.Contains(" / "), "a chosen piece shows its parts carried and in the chests against the count", parts);
+        palette.Text = "wood";
+        int carried = Site.Count(_site.Bag, Site.Wood);
+        palette.PressEnter(_player);
+        string found = string.Join(" | ", Finder.LastLines);
+        _checks.Check(!Palette.IsOpen, "Enter without a number closes the box to show where it is");
+        _checks.Check(Site.Count(_site.Bag, Site.Wood) == carried, "finding takes nothing");
+        _checks.Check(found.Contains("Wood: 110 in 3 chests"), "it finds the wood in the three test chests that may be used", found);
+        _checks.Check(!Finder.LastLit.Contains(_site.Foreign), "someone else's private chest is not shown");
+        _checks.Check(Finder.LastLit.Count == 3, "the three chests light up", Finder.LastLit.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        palette.Open(_player, null);
         palette.Text = "40 wood";
         int before = Site.Count(_site.Bag, Site.Wood);
-        palette.TakeChosen(_player);
+        palette.PressEnter(_player);
         _checks.Check(!Palette.IsOpen && !TextInput.IsVisible(), "Enter closes it and gives the keys back");
         yield return Idle();
         _checks.Check(Site.Count(_site.Bag, Site.Wood) - before == 40, "40 wood arrived", (Site.Count(_site.Bag, Site.Wood) - before).ToString(System.Globalization.CultureInfo.InvariantCulture));

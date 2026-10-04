@@ -120,6 +120,9 @@ internal static class CraftyLink
         return chests;
     }
 
+    /// <summary>Whether AzuCraftyBoxes' registry of every chest could be read.</summary>
+    public static bool HasRegistry => _registry != null;
+
     /// <summary>
     /// Every chest AzuCraftyBoxes has registered within range, whether or not it lets the player
     /// use it now, read only; empty when the registry cannot be read.

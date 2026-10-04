@@ -137,7 +137,7 @@ internal sealed class Grabber
 
         foreach (var chest in touched)
         {
-            Highlight(chest);
+            Highlighter.Light(chest, 2f);
         }
 
         LastLines = Report.Lines(target.Label, plan, new Done(took, asked, changed, refused), Text.Shown, MucLink.Ready);
@@ -232,15 +232,6 @@ internal sealed class Grabber
 
     private static void Add(Dictionary<string, int> counts, string name, int amount)
         => counts[name] = (counts.TryGetValue(name, out int sum) ? sum : 0) + amount;
-
-    private static void Highlight(Container chest)
-    {
-        var root = chest.m_rootObjectOverride ? chest.m_rootObjectOverride.gameObject : chest.gameObject;
-        if (root.TryGetComponent(out WearNTear piece))
-        {
-            piece.Highlight();
-        }
-    }
 
     private static void Say(Player player, string line) => player.Message(MessageHud.MessageType.TopLeft, line);
 }
