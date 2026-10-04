@@ -32,6 +32,8 @@ internal static class Skin
 
     public static GUIStyle Hint { get; private set; }
 
+    public static GUIStyle Line { get; private set; }
+
     public static GUIStyle Button { get; private set; }
 
     public static Texture2D SelectedFill { get; private set; }
@@ -52,7 +54,7 @@ internal static class Skin
 
         Build();
         var sample = new GUIContent(Sample);
-        foreach (var style in new[] { Field, Name, Detail, Hint, Button })
+        foreach (var style in new[] { Field, Name, Detail, Hint, Button, Line })
         {
             style.CalcSize(sample);
         }
@@ -81,6 +83,7 @@ internal static class Skin
         Name = Label(font, 18, Text, TextAnchor.MiddleLeft);
         Detail = Label(font, 15, Faint, TextAnchor.MiddleRight);
         Hint = Label(font, 14, Faint, TextAnchor.MiddleLeft);
+        Line = Label(font, 16, Text, TextAnchor.MiddleCenter);
         Button = new GUIStyle(GUI.skin.button) { font = font, fontSize = 17 };
         SelectedFill = Fill(Selected);
         HoverFill = Fill(Hover);

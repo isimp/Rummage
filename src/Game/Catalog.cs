@@ -20,6 +20,12 @@ internal sealed class Catalog
 
     public List<Entry> Entries { get; } = new();
 
+    /// <summary>What the inventory holds that counts, by item name, as the search box opened.</summary>
+    public Dictionary<string, int> Carried { get; private set; } = new();
+
+    /// <summary>What the chests in reach can give, by item name, as the search box opened.</summary>
+    public Dictionary<string, int> InChests { get; private set; } = new();
+
     public Target TargetOf(Entry entry) => _targets.TryGetValue(entry, out var target) ? target : null;
 
     /// <summary>How many of an item make a full stack, for the count a grab starts at.</summary>
@@ -30,6 +36,8 @@ internal sealed class Catalog
         var catalog = new Catalog();
         var stock = Stock.Takeable(scene.Sources, CraftyLink.LeaveOne, global::Game.m_worldLevel);
         var carried = Scene.Carried(player);
+        catalog.Carried = carried;
+        catalog.InChests = stock;
 
         foreach (var stack in scene.Sources.SelectMany(s => s.Stacks))
         {

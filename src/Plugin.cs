@@ -21,6 +21,9 @@ public sealed class Plugin : BaseUnityPlugin
     public const string Version = "0.1.0";
 
     private readonly Grabber _grabber = new();
+    private readonly BuildReadout _readout = new();
+    private ConfigEntry<bool> _showLine;
+    private ConfigEntry<float> _lineHeight;
     private Palette _palette;
     private ConfigEntry<KeyCode> _key;
     private Harmony _harmony;
@@ -42,6 +45,10 @@ public sealed class Plugin : BaseUnityPlugin
             "Takes what the thing in front of you needs from the chests around you: the recipe selected in the crafting tab, "
             + "the build piece under the cursor in the build menu, or the piece you are placing. With nothing of the sort, it opens the search box; "
             + "with Shift, it opens the search box starting from that thing. Ignored while Alt is held, so Alt with the same key stays free for other mods.");
+        _showLine = Config.Bind("Display", "BuildLine", true,
+            "While building, shows a line with what you carry of each part of the selected piece, what the key would bring and what would still be short.");
+        _lineHeight = Config.Bind("Display", "BuildLineHeight", 0.80f,
+            new ConfigDescription("Where that line sits, as a share of the screen's height from the top.", new AcceptableValueRange<float>(0.05f, 0.95f)));
         _harmony = new Harmony(Guid);
         _harmony.PatchAll(typeof(Plugin).Assembly);
     }
@@ -59,6 +66,10 @@ public sealed class Plugin : BaseUnityPlugin
     private void Update()
     {
         _grabber.Tick(Time.time);
+        if (_showLine.Value)
+        {
+            _readout.Tick(Player.m_localPlayer, Time.time, _key.Value.ToString());
+        }
 
         if (Palette.IsOpen || !Input.GetKeyDown(_key.Value) || Held(KeyCode.LeftAlt, KeyCode.RightAlt, KeyCode.AltGr))
         {
@@ -83,6 +94,7 @@ public sealed class Plugin : BaseUnityPlugin
             if (target != null && !Held(KeyCode.LeftShift, KeyCode.RightShift))
             {
                 _grabber.Grab(player, target, Time.time);
+                _readout.Refresh();
             }
             else
             {
@@ -96,7 +108,14 @@ public sealed class Plugin : BaseUnityPlugin
         }
     }
 
-    private void OnGUI() => _palette.OnGUI();
+    private void OnGUI()
+    {
+        _palette.OnGUI();
+        if (_showLine.Value)
+        {
+            _readout.OnGUI(_lineHeight.Value);
+        }
+    }
 
     private void OnDestroy()
     {

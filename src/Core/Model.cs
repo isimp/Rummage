@@ -217,8 +217,9 @@ internal sealed class Move
 /// <summary>How a grab went for one item, and why anything is missing.</summary>
 internal sealed class Outcome
 {
-    public Outcome(string name, int wanted, int carried, int need)
+    public Outcome(string name, int wanted, int carried, int need, bool total = false)
     {
+        Total = total;
         Name = name;
         Wanted = wanted;
         Carried = carried;
@@ -226,6 +227,9 @@ internal sealed class Outcome
     }
 
     public string Name { get; }
+
+    /// <summary>Whether this is a total to carry (a piece or recipe) rather than a number to bring.</summary>
+    public bool Total { get; }
 
     public int Wanted { get; }
 

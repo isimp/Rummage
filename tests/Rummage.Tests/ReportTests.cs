@@ -61,7 +61,7 @@ public class ReportTests
     {
         var plan = Plan(Inventory(Stack(Wood, 10)), false, [MakeSureICarry(Wood, 10)], Chest(1, 5, Stack(Wood, 50)));
 
-        Assert.Equal(["Workbench: you carry everything already"], Lines(plan));
+        Assert.Equal(["Workbench: Wood 10/10 · you carry it all"], Lines(plan));
     }
 
     [Fact]

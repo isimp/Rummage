@@ -25,7 +25,7 @@ internal static class Planner
         foreach (var want in Merge(wants))
         {
             int carried = want.CountCarried ? bag.Stacks.Where(want.Matches).Sum(s => s.Count) : 0;
-            var outcome = new Outcome(want.Name, want.Count, carried, Math.Max(0, want.Count - carried));
+            var outcome = new Outcome(want.Name, want.Count, carried, Math.Max(0, want.Count - carried), want.CountCarried);
             outcomes.Add(outcome);
 
             int need = outcome.Need;

@@ -61,21 +61,22 @@ internal static class Report
     public static IReadOnlyList<string> Lines(string label, Plan plan, Done done, Func<string, string> shown, bool canRoute)
     {
         var lines = new List<string>();
-        if (plan.Outcomes.All(o => o.Need == 0))
+        if (plan.Outcomes.Count > 0 && plan.Outcomes.All(o => o.Total))
         {
-            lines.Add($"{label}: you carry everything already");
-            return lines;
+            lines.Add(Summary(label, plan, done, shown));
         }
-
-        string took = Items(plan, done.Took, shown);
-        string asked = Items(plan, done.Asked, shown);
-        lines.Add((took.Length > 0, asked.Length > 0) switch
+        else
         {
-            (true, true) => $"{label}: took {took}; asked another player's chest for {asked}",
-            (true, false) => $"{label}: took {took}",
-            (false, true) => $"{label}: asked another player's chest for {asked}",
-            _ => $"{label}: took nothing",
-        });
+            string took = Items(plan, done.Took, shown);
+            string asked = Items(plan, done.Asked, shown);
+            lines.Add((took.Length > 0, asked.Length > 0) switch
+            {
+                (true, true) => $"{label}: took {took}; asked another player's chest for {asked}",
+                (true, false) => $"{label}: took {took}",
+                (false, true) => $"{label}: asked another player's chest for {asked}",
+                _ => $"{label}: took nothing",
+            });
+        }
 
         foreach (var outcome in plan.Outcomes.Where(o => o.Short > 0))
         {
@@ -132,6 +133,36 @@ internal static class Report
         }
 
         return lines;
+    }
+
+    /// <summary>
+    /// For a piece or recipe: each part as what you now carry of what it needs, with what this
+    /// press added and what is still on its way from another player's chest.
+    /// </summary>
+    private static string Summary(string label, Plan plan, Done done, Func<string, string> shown)
+    {
+        var parts = plan.Outcomes.Select(o =>
+        {
+            int took = done.Took.TryGetValue(o.Name, out int t) ? t : 0;
+            int asked = done.Asked.TryGetValue(o.Name, out int a) ? a : 0;
+            var extras = new List<string>();
+            if (took > 0)
+            {
+                extras.Add($"+{Number(took)}");
+            }
+
+            if (asked > 0)
+            {
+                extras.Add($"+{Number(asked)} on the way");
+            }
+
+            string part = $"{shown(o.Name)} {Number(o.Carried + took)}/{Number(o.Wanted)}";
+            return extras.Count > 0 ? $"{part} ({string.Join(", ", extras)})" : part;
+        });
+
+        string line = $"{label}: {string.Join(" · ", parts)}";
+        bool nothingDone = done.Took.Values.Sum() + done.Asked.Values.Sum() == 0;
+        return nothingDone && plan.Outcomes.All(o => o.Short == 0) ? $"{line} · you carry it all" : line;
     }
 
     private static string Items(Plan plan, IReadOnlyDictionary<string, int> counts, Func<string, string> shown)

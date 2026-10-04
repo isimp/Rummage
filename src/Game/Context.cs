@@ -131,6 +131,12 @@ internal static class Context
             }
         }
 
+        return PieceTarget(player);
+    }
+
+    /// <summary>The build piece under the cursor in the build menu, else the one being placed, for the next press.</summary>
+    public static Target PieceTarget(Player player)
+    {
         Piece piece = null;
         if (Hud.IsPieceSelectionVisible() && Hud.instance)
         {
@@ -147,11 +153,13 @@ internal static class Context
 
     /// <summary>
     /// Each press is for one more than what is carried already pays for: one piece more, or one
-    /// more round of the crafting tab's craft amount.
+    /// more round of the crafting tab's craft amount. A part the chests cannot give any more of
+    /// does not hold the count down.
     /// </summary>
     private static Target OneMore(Target target, Player player)
     {
-        return target.WithCount(Repeat.Next(Cost.Sum(target.Cost), Scene.Carried(player), target.Count, target.AnyOf));
+        var takeable = Stock.Takeable(Scene.Read(player).Sources, CraftyLink.LeaveOne, global::Game.m_worldLevel);
+        return target.WithCount(Repeat.Next(Cost.Sum(target.Cost), Scene.Carried(player), takeable, target.Count, target.AnyOf));
     }
 
     /// <summary>

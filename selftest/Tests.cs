@@ -190,9 +190,55 @@ internal sealed class Tests
 
             yield return Grab(target);
             _checks.Check(Site.Count(_site.Bag, Site.Wood) == cost * press, $"press {press}: the inventory holds wood for {press}", $"{Site.Count(_site.Bag, Site.Wood)} wood");
+            string expect = $"{target.Label}: Wood {cost * press}/{cost * press} (+{cost})";
+            _checks.Check(Grabber.LastLines.Count > 0 && Grabber.LastLines[0].StartsWith(expect, StringComparison.Ordinal), $"press {press}: the summary reads \"{expect}\"", string.Join(" | ", Grabber.LastLines));
         }
 
+        var next = Context.PieceTarget(_player);
+        var scene = Scene.Read(_player);
+        string line = Readout.Line(next.Label, Planner.Make(next.Wants(), scene.Sources, scene.Bag, CraftyLink.LeaveOne), "J", Text.Shown);
+        _checks.Check(line.Contains($"in your bag: Wood {cost * 2}/{cost * 3}") && line.Contains($"J brings {cost} Wood"), "while building, the line shows the bag and what the next press brings", line);
+
+        yield return CountingPastAMissingPart();
         _site.PutHandsBack();
+    }
+
+    /// <summary>
+    /// A known piece that needs wood and a part the test chests do not hold: each press still counts
+    /// up, the wood piles up, and the missing part is named short.
+    /// </summary>
+    private IEnumerator CountingPastAMissingPart()
+    {
+        // What the test chests give; resin only sits in chests whose rules or owner keep it in.
+        var held = new HashSet<string>(new[] { Site.Wood, Site.Stone, Site.Arrows });
+        var piece = _player.GetBuildPieces()?.FirstOrDefault(p => p && p.m_resources.Any(r => r.m_resItem && r.m_resItem.m_itemData.m_shared.m_name == Site.Wood)
+            && p.m_resources.Any(r => r.m_resItem && r.m_amount > 0 && !held.Contains(r.m_resItem.m_itemData.m_shared.m_name)));
+        if (!piece || !_player.SetSelectedPiece(piece))
+        {
+            _checks.Skip("no known piece needs wood and something the test chests lack");
+            yield break;
+        }
+
+        _checks.Note($"counting up with {Text.Shown(piece.m_name)}");
+        var given = piece.m_resources.Where(r => r.m_amount > 0 && held.Contains(r.m_resItem.m_itemData.m_shared.m_name))
+            .GroupBy(r => r.m_resItem.m_itemData.m_shared.m_name).ToDictionary(g => g.Key, g => g.Sum(r => r.m_amount));
+        string missing = piece.m_resources.First(r => r.m_amount > 0 && !held.Contains(r.m_resItem.m_itemData.m_shared.m_name)).m_resItem.m_itemData.m_shared.m_name;
+        int before = -1;
+        for (int press = 1; press <= 2; press++)
+        {
+            var target = Context.Find(_player, hovered: false);
+            int expected = given.Min(p => Site.Count(_site.Bag, p.Key) / p.Value) + 1;
+            _checks.Check(target?.Count == expected, $"press {press}: it counts up to {expected} though {Text.Shown(missing)} is missing", target?.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            _checks.Check(before < 0 || target?.Count == before + 1, $"press {press}: one more than the press before");
+            before = target?.Count ?? -1;
+            if (target == null)
+            {
+                yield break;
+            }
+
+            yield return Grab(target);
+            _checks.Check(Grabber.LastLines.Any(l => l.Contains($"{Text.Shown(missing)} short")), $"press {press}: {Text.Shown(missing)} is named short", string.Join(" | ", Grabber.LastLines));
+        }
     }
 
     private IEnumerator LeaveOne()
@@ -315,6 +361,11 @@ internal sealed class Tests
         _checks.Check(Palette.IsOpen && TextInput.IsVisible(), "while open, the game treats it as a text box");
         palette.Text = "40 wood";
         _checks.Check(palette.Results.Count > 0 && palette.Results[0].Key == Site.Wood, "\"40 wood\" puts wood first", palette.Results.Count > 0 ? palette.Results[0].Shown : "nothing");
+        _checks.Check(palette.ChosenParts.Contains("carried + ") && palette.ChosenParts.Contains(" in chests"), "the chosen item shows what is carried and in the chests", palette.ChosenParts);
+        palette.Text = "workbench";
+        string parts = palette.Results.Count > 0 && palette.Results[0].Kind == EntryKind.Piece ? palette.ChosenParts : "(no workbench listed)";
+        _checks.Check(parts.Contains("Wood ") && parts.Contains(" / "), "a chosen piece shows its parts carried and in the chests against the count", parts);
+        palette.Text = "40 wood";
         int before = Site.Count(_site.Bag, Site.Wood);
         palette.TakeChosen(_player);
         _checks.Check(!Palette.IsOpen && !TextInput.IsVisible(), "Enter closes it and gives the keys back");

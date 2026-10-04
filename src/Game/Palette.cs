@@ -54,6 +54,9 @@ internal sealed class Palette
 
     internal IReadOnlyList<Entry> Results => _results;
 
+    /// <summary>The chosen entry's parts line, for the self-test.</summary>
+    internal string ChosenParts => PartsOf(Chosen);
+
     /// <summary>Enter, as the self-test presses it.</summary>
     internal void TakeChosen(Player player)
     {
@@ -242,11 +245,18 @@ internal sealed class Palette
 
         float x = (Screen.width / scale - Width) / 2f;
         int rows = Math.Min(VisibleRows, Math.Max(1, _results.Count));
-        var panel = new Rect(x, Top, Width, 60f + rows * RowHeight + 84f);
+        var panel = new Rect(x, Top, Width, 60f + rows * RowHeight + 118f);
         GUI.Box(panel, GUIContent.none, Skin.Box);
 
         DrawField(new Rect(x + 12f, Top + 12f, Width - 24f, 36f));
         DrawRows(new Rect(x + 12f, Top + 56f, Width - 24f, rows * RowHeight), player);
+        if (!IsOpen)
+        {
+            GUI.matrix = matrix;
+            return;
+        }
+
+        GUI.Label(new Rect(x + 14f, panel.yMax - 110f, Width - 28f, 28f), PartsOf(Chosen), Skin.Hint);
         DrawCount(new Rect(x + 12f, panel.yMax - 76f, Width - 24f, 34f), player);
         GUI.Label(new Rect(x + 14f, panel.yMax - 36f, Width - 28f, 26f),
             "Enter take · Tab complete · ↑↓ choose · Esc close · a number before or after the name sets the count", Skin.Hint);
@@ -351,6 +361,27 @@ internal sealed class Palette
         {
             Take(player);
         }
+    }
+
+    /// <summary>
+    /// For the chosen entry: an item as carried and in the chests; a piece or recipe part by part,
+    /// carried plus in the chests against what the count needs, short parts marked.
+    /// </summary>
+    private string PartsOf(Entry entry)
+    {
+        var target = entry == null ? null : TargetOf(entry);
+        if (target == null || target.Cost.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        if (target.Kind == EntryKind.Item)
+        {
+            string name = target.Cost[0].Name;
+            return Readout.Item(_catalog.Carried.TryGetValue(name, out int c) ? c : 0, _catalog.InChests.TryGetValue(name, out int t) ? t : 0);
+        }
+
+        return Readout.Parts(Cost.Sum(target.Cost), CountFor(entry), _catalog.Carried, _catalog.InChests, Rummage.Game.Text.Shown);
     }
 
     private string Detail(Entry entry)
