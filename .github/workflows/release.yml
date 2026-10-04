@@ -22,7 +22,7 @@ on:
       hexium_categories:
         description: "Hexium categories, comma separated"
         required: false
-        default: "Storage,Quality of Life,Open Source,Valheim 1.0"
+        default: "Storage,Quality of Life,Crafting,Building,User Interface,Open Source,Valheim 1.0"
 
 permissions:
   contents: write
@@ -69,6 +69,16 @@ jobs:
             exit 1
           fi
           echo "icon present"
+
+      # The README shows the screenshot from GitHub on every store page, so a release without it
+      # would ship a broken image.
+      - name: Check the screenshot is there
+        run: |
+          if [ ! -f docs/images/screenshot.webp ]; then
+            echo "::error::docs/images/screenshot.webp is missing. Add the screenshot the README shows and commit it."
+            exit 1
+          fi
+          echo "screenshot present"
 
       # Publishing is part of releasing here, so a missing token is a failure now rather than
       # after the GitHub release already exists.
@@ -136,7 +146,7 @@ jobs:
 
             Requires BepInEx 5 and AzuCraftyBoxes. Client-side; servers do not need Rummage itself.
 
-            Press J on a selected recipe, a build piece in the build menu or the piece being placed, or with nothing of the sort to open the search box. The key can be changed in the config.
+            Press J over a recipe, a build piece or a stack in your inventory to take what it needs from the chests around you, or anywhere else to open the search box. The key can be changed in the config.
           files: |
             dist/hexium/Rummage-${{ inputs.version }}.zip
             dist/Rummage.dll

@@ -2,6 +2,6 @@
   "name": "Rummage",
   "version_number": "0.1.0",
   "website_url": "https://github.com/isimp/Rummage",
-  "description": "Take what a recipe or build piece costs from the chests around you with one key, or search them for anything. Follows AzuCraftyBoxes' chest rules and Leave One Item, and works with MultiUserChest in multiplayer.",
+  "description": "Take what a recipe, build piece or stack needs from the chests around you with one key, or search them to find and take anything. Follows AzuCraftyBoxes' chest rules and Leave One Item, and works with MultiUserChest in multiplayer.",
   "dependencies": ["Azumatt-AzuCraftyBoxes-1.8.27"]
 }

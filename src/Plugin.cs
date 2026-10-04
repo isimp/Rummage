@@ -8,7 +8,7 @@ using UnityEngine;
 namespace Rummage;
 
 [BepInPlugin(Guid, Name, Version)]
-[BepInDependency(CraftyLink.Guid)]
+[BepInDependency(CraftyLink.Guid, CraftyLink.TestedVersion)]
 [BepInDependency(MucLink.Guid, BepInDependency.DependencyFlags.SoftDependency)]
 [BepInDependency(ExtraSlotsLink.Guid, BepInDependency.DependencyFlags.SoftDependency)]
 [BepInDependency(CraftAmountLink.Guid, BepInDependency.DependencyFlags.SoftDependency)]
@@ -51,7 +51,7 @@ public sealed class Plugin : BaseUnityPlugin
             + "the build piece under the cursor in the build menu, or the piece you are placing. With nothing of the sort, it opens the search box; "
             + "with Shift, it opens the search box starting from that thing. Ignored while Alt is held, so Alt with the same key stays free for other mods.");
         _showLine = Config.Bind("Display", "BuildLine", true,
-            "While building, shows under the piece in the game's build panel what you carry of each part, what the key would bring and what would still be short.");
+            "While building, shows a box beside the game's build panel with what you carry of each part of the piece, what the key would bring and what would still be short.");
         _harmony = new Harmony(Guid);
         _harmony.PatchAll(typeof(Plugin).Assembly);
     }

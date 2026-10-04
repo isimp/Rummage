@@ -18,6 +18,9 @@ internal static class CraftyLink
 {
     public const string Guid = "Azumatt.AzuCraftyBoxes";
 
+    /// <summary>The version Rummage was made and tested against; BepInEx loads Rummage only with this one or later.</summary>
+    public const string TestedVersion = "1.8.27";
+
     private const string Section = "2 - CraftyBoxes";
 
     private static readonly Dictionary<Type, FieldInfo> ContainerFields = new();

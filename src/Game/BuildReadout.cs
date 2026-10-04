@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Rummage.Game;
 
 /// <summary>
-/// Two lines under the piece description in the game's build panel, for the piece the panel
+/// Two lines beside the game's build panel, for the piece the panel
 /// shows (the one under the cursor in the build menu, else the one being placed): what the
 /// inventory holds of each part against the next press, and what that press would bring.
 /// Looked at twice a second and right after a press; worked out again only when something it
@@ -129,7 +129,7 @@ internal sealed class BuildReadout
     private static readonly Vector3[] Corners = new Vector3[4];
 
     /// <summary>
-    /// The lines, made once: a dark box under the build panel's content holding a copy of the
+    /// The lines, made once: a dark box beside the build panel's content holding a copy of the
     /// description's own text, so it has the game's font. Anything on the copy that would rewrite
     /// its text (the game's Localize component) is taken off.
     /// </summary>
@@ -176,16 +176,19 @@ internal sealed class BuildReadout
 
         _line = copy.GetComponent<TMP_Text>();
         _line.richText = true;
-        _line.enableWordWrapping = false;
+        _line.enableWordWrapping = true;
         _line.overflowMode = TextOverflowModes.Overflow;
         _line.fontSize = description.fontSize * 0.9f;
         return _line;
     }
 
+    /// <summary>The widest the box gets, so it never reaches over the chat or other parts of the screen.</summary>
+    private const float MaxWidth = 520f;
+
     /// <summary>
-    /// Puts the box just above the build panel, left-aligned with it: below the panel sit the
-    /// game's key hints and beside the costs their labels, while above it is the world. The lines
-    /// never wrap; the box is as wide and as tall as its text.
+    /// Puts the box to the right of the whole build panel (the piece's name, description, icon and
+    /// cost row), top-aligned with it and as tall as it. It is as wide as its longest line up to
+    /// <see cref="MaxWidth"/>; only a line longer than that wraps, and then the box grows taller.
     /// </summary>
     private static void Place(TMP_Text line)
     {
@@ -210,12 +213,14 @@ internal sealed class BuildReadout
             }
         }
 
-        var corner = parent.InverseTransformPoint(new Vector3(left, top, 0f));
-        var size = line.GetPreferredValues(line.text);
+        var topRight = parent.InverseTransformPoint(new Vector3(right, top, 0f));
+        var bottomRight = parent.InverseTransformPoint(new Vector3(right, bottom, 0f));
+        float width = Mathf.Min(line.GetPreferredValues(line.text).x, MaxWidth) + 16f;
+        float height = Mathf.Max(topRight.y - bottomRight.y, line.GetPreferredValues(line.text, width - 16f, 0f).y + 8f);
         box.anchorMin = box.anchorMax = new Vector2(0.5f, 0.5f);
-        box.pivot = new Vector2(0f, 0f);
-        box.sizeDelta = new Vector2(size.x + 16f, size.y + 8f);
-        box.localPosition = new Vector3(corner.x, corner.y + 6f, 0f);
+        box.pivot = new Vector2(0f, 1f);
+        box.sizeDelta = new Vector2(width, height);
+        box.localPosition = new Vector3(topRight.x + 14f, topRight.y, 0f);
     }
     private static void Grow(RectTransform part, ref float left, ref float right, ref float top, ref float bottom)
     {

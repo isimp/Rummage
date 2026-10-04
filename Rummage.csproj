@@ -8,7 +8,7 @@
     <Version>0.1.0</Version>
     <Authors>isimp</Authors>
     <Product>Rummage</Product>
-    <Description>Take what a recipe or build piece costs from the chests around you with one key, or search them for anything. Follows the rules of the storage mods it works with.</Description>
+    <Description>Take what a recipe, build piece or stack needs from the chests around you with one key, or search them to find and take anything. Follows the rules of the storage mods it works with.</Description>
     <Copyright>Copyright (c) 2026 isimp</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
