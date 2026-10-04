@@ -184,7 +184,9 @@ internal sealed class BuildReadout
 
     /// <summary>
     /// Puts the box below everything the panel shows for the piece (its description and every
-    /// cost icon with its name and amount), as wide as that content, and as tall as the text.
+    /// cost icon with its name and amount), starting at that content's left edge. It is as wide
+    /// as its longest line, so each line stays on one row, but at least as wide as the content and
+    /// never past the screen's right edge; only a line wider than that wraps.
     /// </summary>
     private static void Place(TMP_Text line)
     {
@@ -208,7 +210,22 @@ internal sealed class BuildReadout
 
         var topLeft = parent.InverseTransformPoint(new Vector3(left, bottom, 0f));
         var topRight = parent.InverseTransformPoint(new Vector3(right, bottom, 0f));
-        float width = Mathf.Max(200f, topRight.x - topLeft.x);
+        float content = Mathf.Max(200f, topRight.x - topLeft.x);
+        float natural = line.GetPreferredValues(line.text).x + 16f;
+        float room = float.MaxValue;
+        var screen = parent;
+        while (screen.parent is RectTransform above)
+        {
+            screen = above;
+        }
+
+        if (screen != parent)
+        {
+            screen.GetWorldCorners(Corners);
+            room = parent.InverseTransformPoint(Corners[2]).x - topLeft.x - 12f;
+        }
+
+        float width = Mathf.Max(content, Mathf.Min(natural, room));
         float height = line.GetPreferredValues(line.text, width - 16f, 0f).y + 8f;
         box.anchorMin = box.anchorMax = new Vector2(0.5f, 0.5f);
         box.sizeDelta = new Vector2(width, height);
