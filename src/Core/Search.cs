@@ -21,12 +21,13 @@ internal enum EntryKind
 /// <summary>One line the search box can show.</summary>
 internal sealed class Entry
 {
-    public Entry(string key, string shown, EntryKind kind, int inChests)
+    public Entry(string key, string shown, EntryKind kind, int inChests, int held = -1)
     {
         Key = key;
         Shown = shown ?? key;
         Kind = kind;
         InChests = inChests;
+        Held = Math.Max(inChests, held);
     }
 
     /// <summary>The game's name for it: an item's shared name, a piece's or recipe's own name.</summary>
@@ -39,6 +40,12 @@ internal sealed class Entry
 
     /// <summary>For an item, how many the chests can give.</summary>
     public int InChests { get; }
+
+    /// <summary>
+    /// For an item, how many the chests hold, also those kept back by Leave One Item or by chest
+    /// rules and those too far away to take but near enough to find.
+    /// </summary>
+    public int Held { get; }
 }
 
 /// <summary>The search text split into a count and what to look for: "40 wood" and "wood 40" alike.</summary>
@@ -137,14 +144,14 @@ internal static class Search
     /// The whole name first, then names starting with the text, then a word in the name starting
     /// with it, then the text anywhere in the name, then its letters in order. Among equal matches
     /// the shorter name comes first, as it is closer to what was typed, then what the chests hold
-    /// most of. With nothing typed, the chests' contents by name.
+    /// most of. With nothing typed, everything the chests hold by name, also what cannot be taken.
     /// </summary>
     public static IReadOnlyList<Entry> Rank(string text, IEnumerable<Entry> entries)
     {
         text = (text ?? string.Empty).Trim();
         if (text.Length == 0)
         {
-            return entries.Where(e => e.Kind == EntryKind.Item && e.InChests > 0)
+            return entries.Where(e => e.Kind == EntryKind.Item && e.Held > 0)
                 .OrderBy(e => e.Shown, StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }

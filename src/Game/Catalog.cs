@@ -46,9 +46,12 @@ internal sealed class Catalog
             catalog._stackSizes[stack.Name] = stack.MaxStack;
         }
 
-        foreach (var item in stock)
+        var held = Held(player, scene);
+        foreach (string name in held.Keys.Union(stock.Keys))
         {
-            catalog.Add(new Entry(item.Key, Text.Shown(item.Key), EntryKind.Item, item.Value), Target.ForItem(item.Key, Text.Shown(item.Key), 1));
+            int takeable = stock.TryGetValue(name, out int t) ? t : 0;
+            catalog.Add(new Entry(name, Text.Shown(name), EntryKind.Item, takeable, held.TryGetValue(name, out int h) ? h : 0),
+                Target.ForItem(name, Text.Shown(name), 1));
         }
 
         foreach (var (key, unit) in Costed(player))
@@ -57,6 +60,50 @@ internal sealed class Catalog
         }
 
         return catalog;
+    }
+
+    /// <summary>
+    /// Everything the chests hold that finding would look in (AzuCraftyBoxes' registry within the
+    /// find radius), also what Leave One Item or chest rules keep back, so an item that cannot be
+    /// taken can still be searched for and found.
+    /// </summary>
+    private static Dictionary<string, int> Held(Player player, Scene scene)
+    {
+        var held = new Dictionary<string, int>(StringComparer.Ordinal);
+        void Count(Inventory inventory, Dictionary<string, int> into)
+        {
+            foreach (var item in inventory.GetAllItems())
+            {
+                if (item?.m_shared != null)
+                {
+                    into[item.m_shared.m_name] = (into.TryGetValue(item.m_shared.m_name, out int n) ? n : 0) + item.m_stack;
+                }
+            }
+        }
+
+        foreach (var chest in CraftyLink.Registered(player.transform.position, Finder.Radius))
+        {
+            if (chest && chest.GetInventory() != null && (CraftyLink.OnlyChests == null || CraftyLink.OnlyChests(chest)))
+            {
+                Count(chest.GetInventory(), held);
+            }
+        }
+
+        var reachable = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var chest in scene.Chests.Values)
+        {
+            if (chest && chest.GetInventory() != null)
+            {
+                Count(chest.GetInventory(), reachable);
+            }
+        }
+
+        foreach (var item in reachable)
+        {
+            held[item.Key] = Math.Max(item.Value, held.TryGetValue(item.Key, out int n) ? n : 0);
+        }
+
+        return held;
     }
 
     private static readonly HarmonyLib.AccessTools.FieldRef<Player, HashSet<string>> KnownRecipes = HarmonyLib.AccessTools.FieldRefAccess<Player, HashSet<string>>("m_knownRecipes");

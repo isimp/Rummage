@@ -396,7 +396,7 @@ internal sealed class Palette
 
         if (_results.Count == 0)
         {
-            GUI.Label(area, Parsed.Text.Length == 0 ? "The chests in reach hold nothing to take" : "Nothing found", Skin.Hint);
+            GUI.Label(area, Parsed.Text.Length == 0 ? "The chests nearby are empty" : "Nothing found", Skin.Hint);
             return;
         }
 
@@ -601,7 +601,7 @@ internal sealed class Palette
 
         return entry.Kind switch
         {
-            EntryKind.Item => $"{many} in chests",
+            EntryKind.Item => Readout.Stocked(entry.InChests, entry.Held),
             EntryKind.Piece => entry.InChests > 0 ? $"piece · enough for {many}" : "piece · not enough",
             _ => entry.InChests > 0 ? $"recipe · enough for {many}" : "recipe · not enough",
         };

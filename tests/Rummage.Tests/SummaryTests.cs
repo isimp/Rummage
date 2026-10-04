@@ -111,6 +111,16 @@ public class SummaryTests
         Assert.Equal("Wood 12 + 40 / 20 · Surtling core 0 + 1 / 4 (short)", Readout.Parts(cost, 2, carried, takeable, Shown));
     }
 
+    [Theory]
+    [InlineData(98, 98, "98 in chests")]
+    [InlineData(19, 20, "19 to take, 20 nearby")]
+    [InlineData(0, 1, "1 nearby, none to take")]
+    [InlineData(5, 0, "5 in chests")]
+    public void AnItemRowSaysWhetherThereIsAnythingToTake(int takeable, int held, string shown)
+    {
+        Assert.Equal(shown, Readout.Stocked(takeable, held));
+    }
+
     [Fact]
     public void TheSearchBoxShowsAnItemCarriedAndInTheChests()
     {

@@ -49,6 +49,17 @@ internal static class Readout
             return have + give < need ? $"{text} (short)" : text;
         }));
 
+    /// <summary>An item's row in the search box: whether there is anything to take of what the chests hold nearby.</summary>
+    public static string Stocked(int takeable, int held)
+    {
+        if (takeable >= held)
+        {
+            return $"{Number(takeable)} in chests";
+        }
+
+        return takeable > 0 ? $"{Number(takeable)} to take, {Number(held)} nearby" : $"{Number(held)} nearby, none to take";
+    }
+
     /// <summary>An item in the search box: carried, and what the chests give.</summary>
     public static string Item(int carried, int inChests) => $"{Number(carried)} carried + {Number(inChests)} in chests";
 

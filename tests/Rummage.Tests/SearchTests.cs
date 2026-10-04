@@ -114,6 +114,19 @@ public class SearchTests
     }
 
     [Fact]
+    public void AnItemTheChestsHoldButCannotGiveIsStillListed()
+    {
+        Entry[] catalog =
+        [
+            new("$item_wood", "Wood", EntryKind.Item, inChests: 0, held: 1),
+            new("$item_stone", "Stone", EntryKind.Item, inChests: 4),
+        ];
+
+        Assert.Equal(["Stone", "Wood"], Search.Rank("", catalog).Select(e => e.Shown).ToArray());
+        Assert.Equal(["Wood"], Search.Rank("wood", catalog).Select(e => e.Shown).ToArray());
+    }
+
+    [Fact]
     public void TextThatMatchesNothingListsNothing()
     {
         Assert.Empty(Ranked("zzz"));

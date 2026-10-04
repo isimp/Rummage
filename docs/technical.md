@@ -22,7 +22,7 @@
 
 ## The search box
 
-`Game/Palette.cs`, drawn with Unity's immediate-mode GUI. When it opens it reads the chests once (`Game/Catalog.cs`): every item they can give by the same rules as a grab (`Core/Stock.cs`, which the planner uses too), every piece the build menu would show (enabled and in the player's known recipes), and every known recipe at quality 1. Pieces and recipes show how many of them what is carried and what the chests give would pay for.
+`Game/Palette.cs`, drawn with Unity's immediate-mode GUI. When it opens it reads the chests once (`Game/Catalog.cs`): every item they hold within the find radius, with how many of those a grab could take by its rules (`Core/Stock.cs`, which the planner uses too), so an item that cannot be taken is still listed and can be found, every piece the build menu would show (enabled and in the player's known recipes), and every known recipe at quality 1. Pieces and recipes show how many of them what is carried and what the chests give would pay for.
 
 Enter without a number in the text finds instead of taking (`Game/Finder.cs`, `Core/Locate.cs`): every chest AzuCraftyBoxes has registered within 50 m (the ones the player may use and ones someone else has open; other players' private chests are never registered) is counted for the item, or for each part of a piece or recipe, and the chests holding any are lit for 6 seconds with the game's own highlight, given again every tenth of a second as it fades after a fifth (`Game/Highlighter.cs`). Without the registry it falls back to AzuCraftyBoxes' list at its own range.
 

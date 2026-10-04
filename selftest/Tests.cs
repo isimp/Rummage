@@ -260,6 +260,13 @@ internal sealed class Tests
         {
             _checks.Check(Grabber.LastLines.Any(l => l.Contains("kept back by Leave One Item")), "the report says what was kept back", string.Join(" | ", Grabber.LastLines));
         }
+
+        var palette = Plugin.Instance.Palette;
+        palette.Open(_player, null);
+        palette.Text = "wood";
+        var wood = palette.Results.FirstOrDefault(e => e.Key == Site.Wood);
+        _checks.Check(wood != null && wood.InChests == 0 && wood.Held > 0, "wood that cannot be taken is still found by the search", wood == null ? "not listed" : $"{wood.InChests} to take, {wood.Held} held");
+        palette.Close();
     }
 
     private IEnumerator ChestRules()
