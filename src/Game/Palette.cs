@@ -31,6 +31,7 @@ internal sealed class Palette
     private int _selected;
     private int _first;
     private Entry _countFor;
+    private bool _dragging;
     private float _count = 1f;
     private int _focusFrames;
     private readonly Dictionary<Entry, string> _details = new();
@@ -320,6 +321,7 @@ internal sealed class Palette
         float inner = x + Pad;
         float width = Width - 2f * Pad;
         GUI.Label(new Rect(inner, Top + 14f, width, 38f), "Rummage", Skin.Title);
+        GUI.DrawTexture(new Rect(inner - 12f, Top + 52f, width + 24f, panel.height - 52f - (Pad - 12f)), Skin.InnerFill);
         DrawField(new Rect(inner, Top + 58f, width, 38f));
         float y = Top + 104f;
         DrawRows(new Rect(inner, y, width, rows * RowHeight), player);
@@ -440,7 +442,7 @@ internal sealed class Palette
         int? typed = Parsed.Count;
         GUI.Label(new Rect(area.x + 4f, area.y, 70f, area.height), "Count", Skin.Name);
         var track = new Rect(area.x + 80f, area.y + 10f, area.width - 320f, area.height - 20f);
-        _count = Slider(track, typed ?? _count, 1f, MaxCount(chosen), typed == null);
+        _count = Slider(track, new Rect(track.x - 12f, area.y, track.width + 24f, area.height), typed ?? _count, 1f, MaxCount(chosen), typed == null);
         GUI.Label(new Rect(track.xMax + 12f, area.y, 80f, area.height), CountFor(chosen).ToString("N0", CultureInfo.InvariantCulture), Skin.Name);
         if (Button(new Rect(area.xMax - 150f, area.y - 2f, 150f, area.height + 4f), "Take"))
         {
@@ -448,29 +450,37 @@ internal sealed class Palette
         }
     }
 
-    /// <summary>A slider in the game's look: a sunken track, an orange fill and a small button for the handle.</summary>
-    private static float Slider(Rect track, float value, float min, float max, bool enabled)
+    /// <summary>
+    /// A slider in the game's look: a sunken track, an orange fill and a small button for the
+    /// handle. A press anywhere in its grip area takes hold; while the left button stays down the
+    /// handle follows the pointer on every pass, read from the button itself rather than from drag
+    /// events; the wheel over it steps by one.
+    /// </summary>
+    private float Slider(Rect track, Rect grip, float value, float min, float max, bool enabled)
     {
-        int id = GUIUtility.GetControlID(FocusType.Passive);
         var e = Event.current;
         float span = Mathf.Max(0.0001f, max - min);
+        if (!enabled || !Input.GetMouseButton(0))
+        {
+            _dragging = false;
+        }
+
         if (enabled)
         {
-            switch (e.GetTypeForControl(id))
+            if (e.type == EventType.MouseDown && e.button == 0 && grip.Contains(e.mousePosition))
             {
-                case EventType.MouseDown when track.Contains(e.mousePosition):
-                    GUIUtility.hotControl = id;
-                    value = min + Mathf.Clamp01((e.mousePosition.x - track.x) / track.width) * span;
-                    e.Use();
-                    break;
-                case EventType.MouseDrag when GUIUtility.hotControl == id:
-                    value = min + Mathf.Clamp01((e.mousePosition.x - track.x) / track.width) * span;
-                    e.Use();
-                    break;
-                case EventType.MouseUp when GUIUtility.hotControl == id:
-                    GUIUtility.hotControl = 0;
-                    e.Use();
-                    break;
+                _dragging = true;
+                e.Use();
+            }
+            else if (e.type == EventType.ScrollWheel && grip.Contains(e.mousePosition))
+            {
+                value = Mathf.Clamp(Mathf.Round(value) + (e.delta.y > 0 ? -1f : 1f), min, max);
+                e.Use();
+            }
+
+            if (_dragging)
+            {
+                value = min + Mathf.Clamp01((e.mousePosition.x - track.x) / track.width) * span;
             }
         }
 

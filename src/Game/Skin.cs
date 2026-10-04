@@ -45,6 +45,9 @@ internal static class Skin
 
     public static Texture2D SunkenFill { get; private set; }
 
+    /// <summary>The dark, slightly see-through inside of the wood panel, so text stands out on it.</summary>
+    public static Texture2D InnerFill { get; private set; }
+
     public static GUIStyle Button { get; private set; }
 
     public static Texture2D SelectedFill { get; private set; }
@@ -94,6 +97,7 @@ internal static class Skin
             active = { background = null, textColor = Text },
         };
         SunkenFill = Fill(Sunken);
+        InnerFill = Fill(new Color(0.055f, 0.050f, 0.045f, 0.86f));
         Name = Label(font, 18, Text, TextAnchor.MiddleLeft);
         Detail = Label(font, 15, UiArt.Beige, TextAnchor.MiddleRight);
         Chosen = Label(font, 18, UiArt.Orange, TextAnchor.MiddleLeft);

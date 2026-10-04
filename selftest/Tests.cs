@@ -397,11 +397,12 @@ internal sealed class Tests
             _checks.Note("no known piece or recipe here has a name ending in a number");
         }
 
-        palette.Text = "40 wo";
-        palette.PressTab();
+        // Typed in full but in upper case, so Wood itself ranks first whatever else the chests hold.
         string wood = Text.Shown(Site.Wood);
-        _checks.Check(palette.Text == $"40 {wood}", $"Tab turns \"40 wo\" into \"40 {wood}\"", palette.Text);
-        palette.Text = "wo 40";
+        palette.Text = $"40 {wood.ToUpperInvariant()}";
+        palette.PressTab();
+        _checks.Check(palette.Text == $"40 {wood}", $"Tab completes \"40 {wood.ToUpperInvariant()}\" to \"40 {wood}\"", palette.Text);
+        palette.Text = $"{wood.ToUpperInvariant()} 40";
         palette.PressTab();
         _checks.Check(palette.Text == $"40 {wood}", "Tab puts a count typed after the name in front", palette.Text);
         int before = Site.Count(_site.Bag, Site.Wood);
