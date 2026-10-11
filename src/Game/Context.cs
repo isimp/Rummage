@@ -239,5 +239,6 @@ internal static class Context
 /// <summary>Names as the player reads them.</summary>
 internal static class Text
 {
-    public static string Shown(string token) => Localization.instance != null ? Localization.instance.Localize(token) : token;
+    /// <summary>The localized name without any markup a mod wrote into it, such as a colour.</summary>
+    public static string Shown(string token) => Names.Plain(Localization.instance != null ? Localization.instance.Localize(token) : token);
 }

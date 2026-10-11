@@ -459,6 +459,9 @@ internal sealed class Tests
         var palette = Plugin.Instance.Palette;
         palette.Open(_player, null);
         _checks.Check(palette.Results.Count > 0, "the search box lists what the test chests hold");
+        var marked = Catalog.Build(_player, Scene.Read(_player)).Entries.Select(e => e.Shown)
+            .Where(name => System.Text.RegularExpressions.Regex.IsMatch(name, @"<[A-Za-z/#]")).Take(5).ToList();
+        _checks.Check(marked.Count == 0, "no name in the search box carries markup such as a colour", string.Join(", ", marked));
         _checks.Check(Palette.IsOpen && TextInput.IsVisible(), "while open, the game treats it as a text box");
         palette.Text = "40 wood";
         _checks.Check(palette.Results.Count > 0 && palette.Results[0].Key == Site.Wood, "\"40 wood\" puts wood first", palette.Results.Count > 0 ? palette.Results[0].Shown : "nothing");
