@@ -106,6 +106,25 @@ internal static class Readout
         return takeable > 0 ? $"{Number(takeable)} to take, {Number(held)} nearby" : $"{Number(held)} nearby, none to take";
     }
 
+    /// <summary>The new items row in the search box: how many could be taken of those nearby.</summary>
+    public static string NewItems(int takeable, int seen)
+    {
+        if (takeable >= seen)
+        {
+            return $"{Number(takeable)} new to you";
+        }
+
+        return takeable > 0 ? $"{Number(takeable)} to take, {Number(seen)} new nearby" : $"{Number(seen)} new nearby, none to take";
+    }
+
+    /// <summary>The new items row when chosen: the first few names it would take.</summary>
+    public static string NewNames(IReadOnlyList<string> shown)
+    {
+        const int Named = 4;
+        string names = string.Join(", ", shown.Take(Named));
+        return shown.Count > Named ? $"One each of {names} and {Number(shown.Count - Named)} more" : $"One each of {names}";
+    }
+
     /// <summary>An item in the search box: carried, and what the chests give.</summary>
     public static string Item(int carried, int inChests) => $"{Number(carried)} carried + {Number(inChests)} in chests";
 

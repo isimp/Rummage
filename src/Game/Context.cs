@@ -52,7 +52,13 @@ internal sealed class Target
     public List<Want> Wants() => Into != null ? [Core.Want.TopUp(Into).WithCount(Count)] : Cost.Select(Want).ToList();
 
     public Want Want((string Name, int Amount) part)
-        => new(part.Name, part.Amount * Count, countCarried: Kind != EntryKind.Item, minWorldLevel: global::Game.m_worldLevel);
+        => Kind == EntryKind.New
+            ? NewItems.Want(part.Name)
+            : new(part.Name, part.Amount * Count, countCarried: Kind != EntryKind.Item, minWorldLevel: global::Game.m_worldLevel);
+
+    /// <summary>One of each of these items, which the player has never carried; the count stays one.</summary>
+    public static Target ForNew(IEnumerable<string> names)
+        => new(NewItems.Label, EntryKind.New, names.Select(name => (name, 1)).ToList(), 1, anyOf: false);
 
     /// <summary>Fills a carried stack, by at most <paramref name="atMost"/> when it is above zero, else to a full stack.</summary>
     public static Target ForTopUp(ItemStack held, int atMost = 0)

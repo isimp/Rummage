@@ -53,6 +53,7 @@ public sealed class Plugin : BaseUnityPlugin
         _view.enabled = false;
         _harmony = new Harmony(Guid);
         _harmony.PatchAll(typeof(Plugin).Assembly);
+        Commands.Add("new", "takes one of every item in the chests nearby you have never carried", _ => TakeNew(Player.m_localPlayer));
     }
 
     private void Start()
@@ -134,6 +135,32 @@ public sealed class Plugin : BaseUnityPlugin
             Log.LogError($"The key failed: {e}");
             Notice.Say(player, "Rummage ran into an error; see the log");
             return Pressed.Nothing;
+        }
+    }
+
+    /// <summary>/rummage new: one of every item in the chests nearby the player has never carried.</summary>
+    internal void TakeNew(Player player)
+    {
+        if (!player || player.IsDead() || Palette.IsOpen)
+        {
+            return;
+        }
+
+        if (!CraftyLink.Ready)
+        {
+            Notice.Say(player, CraftyLink.Problem);
+            return;
+        }
+
+        try
+        {
+            _grabber.GrabNew(player, Time.time);
+            _readout.Refresh();
+        }
+        catch (System.Exception e)
+        {
+            Log.LogError($"Taking new items failed: {e}");
+            Notice.Say(player, "Rummage ran into an error; see the log");
         }
     }
 

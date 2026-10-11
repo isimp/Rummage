@@ -16,6 +16,9 @@ internal enum EntryKind
 
     /// <summary>A crafting recipe; a grab brings what that many crafts cost.</summary>
     Recipe,
+
+    /// <summary>One of every item nearby the player has never carried; see <see cref="NewItems"/>.</summary>
+    New,
 }
 
 /// <summary>One line the search box can show.</summary>
@@ -165,15 +168,17 @@ internal static class Search
     /// The whole name first, then names starting with the text, then a word in the name starting
     /// with it, then the text anywhere in the name, then its letters in order. Among equal matches
     /// the shorter name comes first, as it is closer to what was typed, then what the chests hold
-    /// most of. With nothing typed, everything the chests hold by name, also what cannot be taken.
+    /// most of. With nothing typed, the new items row when there is one, then everything the chests
+    /// hold by name, also what cannot be taken.
     /// </summary>
     public static IReadOnlyList<Entry> Rank(string text, IEnumerable<Entry> entries)
     {
         text = (text ?? string.Empty).Trim();
         if (text.Length == 0)
         {
-            return entries.Where(e => e.Kind == EntryKind.Item && e.Held > 0)
-                .OrderBy(e => e.Shown, StringComparer.OrdinalIgnoreCase)
+            return entries.Where(e => e.Kind is EntryKind.Item or EntryKind.New && e.Held > 0)
+                .OrderBy(e => e.Kind == EntryKind.New ? 0 : 1)
+                .ThenBy(e => e.Shown, StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }
 

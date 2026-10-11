@@ -283,10 +283,13 @@ internal sealed class Palette
         _cursorToEnd = true;
     }
 
-    /// <summary>With a number in the text, Enter takes that many; without one it finds where the chosen entry is.</summary>
+    /// <summary>
+    /// With a number in the text, Enter takes that many; without one it finds where the chosen
+    /// entry is. The new items row always takes, one of each.
+    /// </summary>
     private void Enter(Player player)
     {
-        if (Parsed.Count != null)
+        if (Parsed.Count != null || Chosen?.Kind == EntryKind.New)
         {
             Take(player);
             return;
@@ -309,6 +312,14 @@ internal sealed class Palette
         var target = chosen == null ? null : TargetOf(chosen);
         if (target == null)
         {
+            return;
+        }
+
+        if (target.Kind == EntryKind.New)
+        {
+            // Read again from the chests as they are now; the row was made when the box opened.
+            Close();
+            _grabber.GrabNew(player, Time.time);
             return;
         }
 
@@ -353,7 +364,10 @@ internal sealed class Palette
         y += 32f;
         DrawCount(new Rect(inner, y, width, 36f), player);
         y += 44f;
-        GUI.Label(new Rect(inner + 4f, y, width - 8f, 24f), "Enter find · a number, then Enter, takes · Tab complete · ↑↓ choose · Esc close", Skin.Hint);
+        string keys = Chosen?.Kind == EntryKind.New
+            ? "Enter takes one of each · ↑↓ choose · Esc close"
+            : "Enter find · a number, then Enter, takes · Tab complete · ↑↓ choose · Esc close";
+        GUI.Label(new Rect(inner + 4f, y, width - 8f, 24f), keys, Skin.Hint);
 
         GUI.matrix = matrix;
     }
@@ -455,6 +469,16 @@ internal sealed class Palette
         {
             _countFor = chosen;
             _count = StartCount(chosen);
+        }
+
+        if (chosen.Kind == EntryKind.New)
+        {
+            if (Button(new Rect(area.xMax - 150f, area.y - 2f, 150f, area.height + 4f), "Take"))
+            {
+                Take(player);
+            }
+
+            return;
         }
 
         int? typed = Parsed.Count;
@@ -568,6 +592,11 @@ internal sealed class Palette
             return string.Empty;
         }
 
+        if (target.Kind == EntryKind.New)
+        {
+            return Readout.NewNames(target.Cost.Select(part => Rummage.Game.Text.Shown(part.Name)).ToList());
+        }
+
         if (target.Kind == EntryKind.Item)
         {
             string name = target.Cost[0].Name;
@@ -604,6 +633,7 @@ internal sealed class Palette
         return entry.Kind switch
         {
             EntryKind.Item => Readout.Stocked(entry.InChests, entry.Held),
+            EntryKind.New => Readout.NewItems(entry.InChests, entry.Held),
             EntryKind.Piece => entry.InChests > 0 ? $"piece · enough for {many}" : "piece · not enough",
             _ => entry.InChests > 0 ? $"recipe · enough for {many}" : "recipe · not enough",
         };

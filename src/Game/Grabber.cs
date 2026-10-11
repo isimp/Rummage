@@ -144,6 +144,26 @@ internal sealed class Grabber
         Notice.Say(player, LastLines);
     }
 
+    /// <summary>One of every item in the chests nearby the player has never carried, which teaches the game each of them.</summary>
+    public void GrabNew(Player player, float now)
+    {
+        if (_waiting.Busy)
+        {
+            Notice.Say(player, "Still waiting for the last rummage to arrive");
+            return;
+        }
+
+        var wants = NewItems.Wants(Scene.Read(player).Sources, player.IsKnownMaterial);
+        if (wants.Count == 0)
+        {
+            LastLines = [NewItems.NothingNew];
+            Notice.Say(player, LastLines);
+            return;
+        }
+
+        Grab(player, Target.ForNew(wants.Select(w => w.Name)), now);
+    }
+
     /// <summary>
     /// The plan for the target. A recipe that takes any one of its ingredients is planned once per
     /// ingredient, and the one carried already, else the first the chests make up in full, else

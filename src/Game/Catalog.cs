@@ -7,7 +7,8 @@ namespace Rummage.Game;
 
 /// <summary>
 /// What the search box offers: the items the chests in reach can give, the build pieces the
-/// player knows and the recipes the player knows, each with what one of it is.
+/// player knows and the recipes the player knows, each with what one of it is, and a row for the
+/// items nearby the player has never carried.
 /// </summary>
 internal sealed class Catalog
 {
@@ -55,6 +56,13 @@ internal sealed class Catalog
                 catalog.Add(new Entry(name, Text.Shown(name), EntryKind.Item, takeable, held.TryGetValue(name, out int h) ? h : 0),
                     Target.ForItem(name, Text.Shown(name), 1));
             }
+        }
+
+        var news = NewItems.Wants(scene.Sources, player.IsKnownMaterial);
+        if (news.Count > 0)
+        {
+            var (takeable, seen) = NewItems.Count(scene.Sources, player.IsKnownMaterial, CraftyLink.LeaveOne);
+            catalog.Add(new Entry(NewItems.Key, NewItems.Label, EntryKind.New, takeable, seen), Target.ForNew(news.Select(w => w.Name)));
         }
 
         bool pieces = Settings.ShowPieces.Value;

@@ -136,6 +136,7 @@ internal sealed class Tests
             yield return Part("a recipe in the crafting tab, pressed twice", Recipe());
             yield return Part("filling a stack", TopUp());
             yield return Part("the search box", SearchBox());
+            yield return Part("new items", NewToYou());
             yield return Part("the settings", SettingsChange());
             yield return Part("a chest held by a game that never answers", NeverAnswers());
             yield return Part("a chest held by another player's game", AnotherPlayer());
@@ -273,6 +274,80 @@ internal sealed class Tests
         var wood = palette.Results.FirstOrDefault(e => e.Key == Site.Wood);
         _checks.Check(wood != null && wood.InChests == 0 && wood.Held > 0, "wood that cannot be taken is still found by the search", wood == null ? "not listed" : $"{wood.InChests} to take, {wood.Held} held");
         palette.Close();
+    }
+
+    private static readonly AccessTools.FieldRef<Player, HashSet<string>> KnownMaterials = AccessTools.FieldRefAccess<Player, HashSet<string>>("m_knownMaterial");
+
+    /// <summary>
+    /// /rummage new and the search box's New items row. Stone and wood arrows are made new to the
+    /// character for the part by taking them off the list of what it has carried, and are on it
+    /// again afterwards; a character that has not carried both yet is left alone, as the part would
+    /// teach it them for real.
+    /// </summary>
+    private IEnumerator NewToYou()
+    {
+        var known = KnownMaterials(_player);
+        string[] madeNew = [Site.Stone, Site.Arrows];
+        if (known == null || !Items.All(known.Contains))
+        {
+            _checks.Skip("this character has not carried wood, stone, resin and wood arrows yet");
+            yield break;
+        }
+
+        var terminal = (Terminal)global::Console.instance ?? Chat.instance;
+        void RunNew() => terminal.TryRunCommand("rummage new", silentFail: false, skipAllowedCheck: true);
+
+        RunNew();
+        _checks.Check(Grabber.LastLines.Count == 1 && Grabber.LastLines[0] == Core.NewItems.NothingNew, "with nothing new nearby, /rummage new says so", string.Join(" | ", Grabber.LastLines));
+
+        try
+        {
+            known.ExceptWith(madeNew);
+            var palette = Plugin.Instance.Palette;
+            palette.Open(_player, null);
+            var first = palette.Results.Count > 0 ? palette.Results[0] : null;
+            _checks.Check(first?.Kind == EntryKind.New, "the search box lists New items first", first?.Shown ?? "nothing");
+            string parts = palette.ChosenParts;
+            _checks.Check(parts.Contains(Text.Shown(Site.Stone)) && parts.Contains(Text.Shown(Site.Arrows)) && !parts.Contains(Text.Shown(Site.Wood) + ","),
+                "the row names stone and wood arrows, not wood", parts);
+            palette.Close();
+
+            var before = Snapshot();
+            RunNew();
+            yield return Idle();
+            _checks.Note(string.Join(" | ", Grabber.LastLines));
+            Conserved(before);
+            _checks.Check(Site.Count(_site.Bag, Site.Stone) == 1 && Site.Count(_site.Bag, Site.Arrows) == 1, "/rummage new takes one stone and one wood arrow",
+                $"{Site.Count(_site.Bag, Site.Stone)} stone, {Site.Count(_site.Bag, Site.Arrows)} arrows");
+            _checks.Check(Site.Count(_site.Bag, Site.Wood) == 0 && Site.Count(_site.Bag, Site.Resin) == 0, "nothing already known is taken");
+            _checks.Check(madeNew.All(known.Contains), "carrying them taught the game both");
+            _checks.Check(Grabber.LastLines.Count > 0 && Grabber.LastLines[0].StartsWith(Core.NewItems.Label + ": took", StringComparison.Ordinal), "the report says what was taken", string.Join(" | ", Grabber.LastLines));
+
+            // One stone left in the chest: Leave One Item keeps it, as for any other grab.
+            _site.ClearBag();
+            _site.Refill();
+            _site.Main.GetInventory().RemoveItem(Site.Stone, 19);
+            known.Remove(Site.Stone);
+            palette.Open(_player, null);
+            before = Snapshot();
+            palette.PressEnter(_player);
+            yield return Idle();
+            Conserved(before);
+            string lines = string.Join(" | ", Grabber.LastLines);
+            if (CraftyLink.LeaveOne)
+            {
+                _checks.Check(Site.Count(_site.Bag, Site.Stone) == 0 && Site.Count(_site.Main.GetInventory(), Site.Stone) == 1, "Enter on the row leaves the last stone with Leave One Item on", lines);
+                _checks.Check(lines.Contains("kept back by Leave One Item"), "the report says it was kept back", lines);
+            }
+            else
+            {
+                _checks.Check(Site.Count(_site.Bag, Site.Stone) == 1, "Enter on the row takes the last stone with Leave One Item off", lines);
+            }
+        }
+        finally
+        {
+            known.UnionWith(madeNew);
+        }
     }
 
     private IEnumerator ChestRules()

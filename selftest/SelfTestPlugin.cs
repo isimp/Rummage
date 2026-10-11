@@ -17,14 +17,8 @@ public sealed class SelfTestPlugin : BaseUnityPlugin
 
     private void Awake()
     {
-        _ = new Terminal.ConsoleCommand("rummage", "selftest - runs Rummage's self-test with chests of its own next to you", args =>
+        Rummage.Game.Commands.Add("selftest", "runs Rummage's self-test with chests of its own next to you", args =>
         {
-            if (args.Length < 2 || args[1] != "selftest")
-            {
-                args.Context?.AddString("Usage: /rummage selftest");
-                return;
-            }
-
             if (_running)
             {
                 args.Context?.AddString("The Rummage self-test is already running.");
@@ -38,7 +32,7 @@ public sealed class SelfTestPlugin : BaseUnityPlugin
             }
 
             StartCoroutine(Run());
-        }, isCheat: false);
+        });
     }
 
     private System.Collections.IEnumerator Run()

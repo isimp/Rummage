@@ -24,6 +24,10 @@ The search box lists everything the chests within 50 metres hold, along with eve
 
 Shift with the Rummage key over a recipe or piece opens the search box on it, the count already filled in. The search box can also have a key of its own.
 
+## New items
+
+Valheim unlocks recipes and pieces once you have carried their materials. When the chests nearby hold something you have never carried, the search box shows *New items* at the top, and Enter takes one of each. Typing `/rummage new` in chat does the same.
+
 ## Good to know
 
 Rummage keeps to AzuCraftyBoxes' rules. It takes only from the chests that mod would use, leaves in what its chest rules keep in, and with its `Leave One Item` setting on, leaves one of each item in every chest. Items kept back that way still show in the search, so you can find them. Chests you could not open by hand, such as another player's private chest or one under a ward you have no access to, are never touched.
