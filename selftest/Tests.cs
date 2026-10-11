@@ -332,6 +332,8 @@ internal sealed class Tests
             before = Snapshot();
             palette.PressEnter(_player);
             yield return Idle();
+            // The keys stay held for two frames after the box closes; the next part presses the key.
+            yield return Frames(4);
             Conserved(before);
             string lines = string.Join(" | ", Grabber.LastLines);
             if (CraftyLink.LeaveOne)
