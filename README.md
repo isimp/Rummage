@@ -42,7 +42,7 @@ Rummage runs on your own machine only, and servers do not need it. MultiUserChes
 
 All settings are in `BepInEx/config/isimp.Rummage.cfg`, each with a description. They cover the Rummage key and how the search box opens, what the key takes for and how much one press fills a stack, what the search box lists, how far it looks and how big it is, when the box beside the build panel shows, how much the messages tell, and its sounds. The chest range and `Leave One Item` are AzuCraftyBoxes' own settings, and a server's values for them apply.
 
-Tested with AzuCraftyBoxes 1.8.27, MultiUserChest 0.6.2, ExtraSlots 1.2.16 and AzuAntiArthriticCrafting 2.1.11.
+Tested with AzuCraftyBoxes 1.8.27, MultiUserChest 0.6.2, ExtraSlots 1.2.18 and AzuAntiArthriticCrafting 2.1.11.
 
 ## More
 

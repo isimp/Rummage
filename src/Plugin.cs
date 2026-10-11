@@ -24,7 +24,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string Guid = "isimp.Rummage";
     public const string Name = "Rummage";
-    public const string Version = "0.1.1";
+    public const string Version = "0.2.0";
 
     private readonly Grabber _grabber = new();
     private readonly BuildReadout _readout = new();
