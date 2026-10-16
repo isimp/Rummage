@@ -9,8 +9,10 @@ namespace Rummage.Game;
 /// <summary>What a grab is for: what one of it costs, and how many.</summary>
 internal sealed class Target
 {
-    public Target(string shown, EntryKind kind, IReadOnlyList<(string Name, int Amount)> cost, int count, bool anyOf, ItemStack into = null, UnityEngine.Sprite icon = null)
+    public Target(string shown, EntryKind kind, IReadOnlyList<(string Name, int Amount)> cost, int count, bool anyOf, ItemStack into = null,
+        UnityEngine.Sprite icon = null, string key = null)
     {
+        Key = key;
         Into = into;
         Icon = icon ? icon : (cost.Count > 0 ? UiArt.ItemIcon(cost[0].Name) : null);
         Shown = shown;
@@ -21,6 +23,12 @@ internal sealed class Target
     }
 
     public string Shown { get; }
+
+    /// <summary>
+    /// The search box's key for it (<see cref="Entry.Key"/>), so the search box can remember it;
+    /// none for what it would not list as such, as an upgrade.
+    /// </summary>
+    public string Key { get; }
 
     public EntryKind Kind { get; }
 
@@ -43,18 +51,24 @@ internal sealed class Target
 
     public string Label => FillsStack ? $"{Shown} to a full stack" : Count > 1 ? $"{Shown} x{Count}" : Shown;
 
-    public Target WithCount(int count) => new(Shown, Kind, Cost, count, AnyOf, Into, Icon);
+    public Target WithCount(int count) => new(Shown, Kind, Cost, count, AnyOf, Into, Icon, Key);
 
     /// <summary>
-    /// What to ask the chests for. A piece or recipe is a total to carry, so what the inventory
-    /// already holds counts; an item is a number to bring.
+    /// What to ask the chests for. A recipe is a total to carry, so what the inventory already
+    /// holds counts; so is a piece, unless the PiecePress setting brings a whole set every time;
+    /// an item is a number to bring.
     /// </summary>
-    public List<Want> Wants() => Into != null ? [Core.Want.TopUp(Into).WithCount(Count)] : Cost.Select(Want).ToList();
+    public List<Want> Wants() => Wants(Settings.PiecePress.Value);
 
-    public Want Want((string Name, int Amount) part)
+    /// <summary>As <see cref="Wants()"/>, under the piece rule given rather than the one set.</summary>
+    public List<Want> Wants(PiecePress rule) => Into != null ? [Core.Want.TopUp(Into).WithCount(Count)] : Cost.Select(part => Want(part, rule)).ToList();
+
+    public Want Want((string Name, int Amount) part) => Want(part, Settings.PiecePress.Value);
+
+    private Want Want((string Name, int Amount) part, PiecePress rule)
         => Kind == EntryKind.New
             ? NewItems.Want(part.Name)
-            : new(part.Name, part.Amount * Count, countCarried: Kind != EntryKind.Item, minWorldLevel: global::Game.m_worldLevel);
+            : Presses.Wants([part], Count, Kind, rule, global::Game.m_worldLevel)[0];
 
     /// <summary>One of each of these items, which the player has never carried; the count stays one.</summary>
     public static Target ForNew(IEnumerable<string> names)
@@ -62,10 +76,10 @@ internal sealed class Target
 
     /// <summary>Fills a carried stack, by at most <paramref name="atMost"/> when it is above zero, else to a full stack.</summary>
     public static Target ForTopUp(ItemStack held, int atMost = 0)
-        => new(Text.Shown(held.Name), EntryKind.Item, [(held.Name, 1)], Core.Want.TopUp(held, atMost).Count, anyOf: false, held);
+        => new(Text.Shown(held.Name), EntryKind.Item, [(held.Name, 1)], Core.Want.TopUp(held, atMost).Count, anyOf: false, held, key: held.Name);
 
     public static Target ForItem(string name, string shown, int count)
-        => new(shown, EntryKind.Item, [(name, 1)], count, anyOf: false);
+        => new(shown, EntryKind.Item, [(name, 1)], count, anyOf: false, key: name);
 
     /// <summary>What one of the piece costs.</summary>
     public static Target ForPiece(Piece piece, int count = 1)
@@ -80,7 +94,7 @@ internal sealed class Target
             }
         }
 
-        return new Target(Text.Shown(piece.m_name), EntryKind.Piece, cost, count, anyOf: false, icon: piece.m_icon);
+        return new Target(Text.Shown(piece.m_name), EntryKind.Piece, cost, count, anyOf: false, icon: piece.m_icon, key: piece.m_name);
     }
 
     /// <summary>
@@ -106,8 +120,9 @@ internal sealed class Target
             }
         }
 
+        // The search box lists a recipe at its first quality, so only that one is remembered by name.
         return new Target(Text.Shown(recipe.m_item.m_itemData.m_shared.m_name), EntryKind.Recipe, cost, count, recipe.m_requireOnlyOneIngredient,
-            icon: recipe.m_item.m_itemData.GetIcon());
+            icon: recipe.m_item.m_itemData.GetIcon(), key: quality == 1 ? recipe.m_item.m_itemData.m_shared.m_name : null);
     }
 }
 
@@ -178,12 +193,14 @@ internal static class Context
     /// <summary>
     /// Each press is for one more than what is carried already pays for: one piece more, or one
     /// more round of the crafting tab's craft amount. A part the chests cannot give any more of
-    /// does not hold the count down.
+    /// does not hold the count down. Under the PiecePress setting FullSet, a piece press is for
+    /// one, whatever is carried.
     /// </summary>
-    private static Target OneMore(Target target, Player player, Scene scene = null)
+    internal static Target OneMore(Target target, Player player, Scene scene = null)
     {
         var takeable = Stock.Takeable((scene ?? Scene.Read(player)).Sources, CraftyLink.LeaveOne, global::Game.m_worldLevel);
-        return target.WithCount(Repeat.Next(Cost.Sum(target.Cost), Scene.Carried(player), takeable, target.Count, target.AnyOf));
+        return target.WithCount(Presses.Next(target.Kind, Settings.PiecePress.Value, Cost.Sum(target.Cost), Scene.Carried(player), takeable,
+            target.Count, target.AnyOf));
     }
 
     /// <summary>

@@ -12,7 +12,7 @@ Most of Rummage was written by Claude Code (Anthropic), which did the heavy lift
 
 ## Getting started
 
-Select a recipe in the crafting tab and press the Rummage key, and the materials for one craft are in your inventory. Each further press takes enough for one more. With the hammer it works the same way, for the piece you are placing or the one under the cursor in the build menu. What you already carry counts, so only the difference is taken, and a part the chests have run out of does not stop the count for the others.
+Select a recipe in the crafting tab and press the Rummage key, and the materials for one craft are in your inventory. Each further press takes enough for one more. With the hammer it works the same way, for the piece you are placing or the one under the cursor in the build menu. What you already carry counts, so only the difference is taken, and a part the chests have run out of does not stop the count for the others. If you would rather have every press for a piece take its whole cost, so that presses for different pieces add up, set `PiecePress` to `FullSet`.
 
 Over a stack in your inventory, the key fills that stack to a full one.
 
@@ -23,6 +23,8 @@ While building, a box to the right of the game's build panel shows how much of e
 The search box lists everything the chests within 50 metres hold, along with every piece and recipe you know. Type part of a name and Tab completes it. Enter alone finds it: the chests that hold it light up, and a message says how many are in each. Put a number in front, as in "40 wood", and Enter takes that many of *Wood*. The *Count* slider and *Take* do the same with the mouse. For a piece or a recipe the number is how many you want to build or craft, and a number that is part of a name stays part of the name.
 
 Shift with the Rummage key over a recipe or piece opens the search box on it, the count already filled in. The search box can also have a key of its own.
+
+The last two things you found or took come first when nothing is typed, marked with circling arrows. Press Enter again on something you just found and Rummage takes one of it rather than finding it again, until you take it or find something else; Shift with Enter finds it again. Rummage remembers these for each character, and `/rummage forget` in chat clears them. Set `RememberLastUsed` to false if you would rather Enter always found.
 
 ## New items
 
@@ -40,7 +42,7 @@ Rummage runs on your own machine only, and servers do not need it. MultiUserChes
 
 ## Settings
 
-All settings are in `BepInEx/config/isimp.Rummage.cfg`, each with a description. They cover the Rummage key and how the search box opens, what the key takes for and how much one press fills a stack, what the search box lists, how far it looks and how big it is, when the box beside the build panel shows, how much the messages tell, and its sounds. The chest range and `Leave One Item` are AzuCraftyBoxes' own settings, and a server's values for them apply.
+All settings are in `BepInEx/config/isimp.Rummage.cfg`, each with a description. They cover the Rummage key and how the search box opens, what the key takes for, how a press for a piece counts what you carry and how much one press fills a stack, what the search box lists, whether it remembers what you last used, how far it looks and how big it is, when the box beside the build panel shows, how much the messages tell, and its sounds. The chest range and `Leave One Item` are AzuCraftyBoxes' own settings, and a server's values for them apply.
 
 Tested with AzuCraftyBoxes 1.8.27, MultiUserChest 0.6.2, ExtraSlots 1.2.18 and AzuAntiArthriticCrafting 2.1.11.
 

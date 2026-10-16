@@ -34,7 +34,8 @@ internal sealed class Catalog
     /// <summary>How many of an item make a full stack, for the count a grab starts at.</summary>
     public int StackSize(string name) => _stackSizes.TryGetValue(name, out int size) ? size : 1;
 
-    public static Catalog Build(Player player, Scene scene)
+    /// <summary>What the search box offers now. An item it last found or took (<c>recent</c>) is listed also when the chests hold none of it.</summary>
+    public static Catalog Build(Player player, Scene scene, IEnumerable<Used> recent = null)
     {
         var catalog = new Catalog();
         var stock = Stock.Takeable(scene.Sources, CraftyLink.LeaveOne, global::Game.m_worldLevel);
@@ -50,7 +51,9 @@ internal sealed class Catalog
         if (Settings.ShowItems.Value)
         {
             var held = Held(player, scene);
-            foreach (string name in held.Keys.Union(stock.Keys))
+            // An item the search box last found or took stays listed when no chest nearby holds it any more.
+            var lastUsed = (recent ?? []).Where(u => u.Kind == EntryKind.Item).Select(u => u.Key);
+            foreach (string name in held.Keys.Union(stock.Keys).Union(lastUsed))
             {
                 int takeable = stock.TryGetValue(name, out int t) ? t : 0;
                 catalog.Add(new Entry(name, Text.Shown(name), EntryKind.Item, takeable, held.TryGetValue(name, out int h) ? h : 0),
@@ -208,7 +211,7 @@ internal sealed class Catalog
         _targets[entry] = target;
     }
 
-    /// <summary>A piece or recipe, listed with how many of it what is carried and what the chests give would pay for.</summary>
+    /// <summary>A piece or recipe, listed with how many of it what is carried and what the chests give would pay for (see <see cref="Presses.CountsCarried"/>).</summary>
     private void AddCosted(Target target, string key, Dictionary<string, int> carried, Dictionary<string, int> stock)
     {
         if (target.Cost.Count == 0)
@@ -216,9 +219,11 @@ internal sealed class Catalog
             return;
         }
 
+        // Under the PiecePress setting FullSet a piece's count is what the chests alone give whole sets of.
+        var counted = Presses.CountsCarried(target.Kind, Settings.PiecePress.Value) ? carried : new Dictionary<string, int>();
         int affordable = target.AnyOf
-            ? target.Cost.Max(part => Stock.Affordable(new Dictionary<string, int> { [part.Name] = part.Amount }, carried, stock))
-            : Stock.Affordable(Cost.Sum(target.Cost), carried, stock);
+            ? target.Cost.Max(part => Stock.Affordable(new Dictionary<string, int> { [part.Name] = part.Amount }, counted, stock))
+            : Stock.Affordable(Cost.Sum(target.Cost), counted, stock);
         Add(new Entry(key, target.Shown, target.Kind, affordable), target);
     }
 

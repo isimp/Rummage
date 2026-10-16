@@ -27,6 +27,8 @@ internal static class Settings
 
     public static ConfigEntry<bool> TakeForPieces { get; private set; }
 
+    public static ConfigEntry<PiecePress> PiecePress { get; private set; }
+
     public static ConfigEntry<bool> TopUpStacks { get; private set; }
 
     public static ConfigEntry<int> TopUpAmount { get; private set; }
@@ -36,6 +38,8 @@ internal static class Settings
     public static ConfigEntry<bool> ShowPieces { get; private set; }
 
     public static ConfigEntry<bool> ShowRecipes { get; private set; }
+
+    public static ConfigEntry<bool> RememberLastUsed { get; private set; }
 
     public static ConfigEntry<float> FindRadius { get; private set; }
 
@@ -67,6 +71,10 @@ internal static class Settings
             "Whether Key takes for the recipe selected in the crafting tab.");
         TakeForPieces = config.Bind("Taking", "TakeForPieces", true,
             "Whether Key takes for build pieces. Turned off, the box beside the build panel does not show either.");
+        PiecePress = config.Bind("Taking", "PiecePress", Core.PiecePress.TopUp,
+            "How a press for a build piece counts what you carry. TopUp: what you carry counts, and a press takes what one more piece still needs. "
+            + "FullSet: every press takes the piece's whole cost, whatever you carry, so presses for different pieces add up. "
+            + "A count typed in the search box for a piece follows the same rule. Recipes always count what you carry.");
         TopUpStacks = config.Bind("Taking", "TopUpStacks", true,
             "Whether Key over a stack in your inventory fills that stack from the chests.");
         TopUpAmount = config.Bind("Taking", "TopUpAmount", 0,
@@ -76,6 +84,9 @@ internal static class Settings
         ShowItems = config.Bind("Search", "ShowItems", true, "Whether the search box lists what the chests hold.");
         ShowPieces = config.Bind("Search", "ShowPieces", true, "Whether the search box lists the build pieces you know.");
         ShowRecipes = config.Bind("Search", "ShowRecipes", true, "Whether the search box lists the recipes you know.");
+        RememberLastUsed = config.Bind("Search", "RememberLastUsed", true,
+            "Whether the search box remembers the last two things you found or took, for each character: they are listed first, "
+            + "and Enter again on what you just found takes one of it. Turned off, nothing is remembered and Enter without a count always finds.");
         FindRadius = config.Bind("Search", "FindRadius", 50f,
             new ConfigDescription("How far, in metres, the search box looks for chests to list what they hold and to light up when finding. "
                 + "Taking stays within AzuCraftyBoxes' own range.", new AcceptableValueRange<float>(10f, 150f)));
@@ -107,8 +118,8 @@ internal static class Settings
         file.SaveOnConfigSet = false;
         var entries = new ConfigEntryBase[]
         {
-            Key, Modifier, SearchKey, KeyAloneOpensSearch, TakeForRecipes, TakeForPieces, TopUpStacks, TopUpAmount,
-            ShowItems, ShowPieces, ShowRecipes, FindRadius, Rows, Scale, BuildBox, Messages, PlaySounds,
+            Key, Modifier, SearchKey, KeyAloneOpensSearch, TakeForRecipes, TakeForPieces, PiecePress, TopUpStacks, TopUpAmount,
+            ShowItems, ShowPieces, ShowRecipes, RememberLastUsed, FindRadius, Rows, Scale, BuildBox, Messages, PlaySounds,
         };
         var saved = new object[entries.Length];
         for (int i = 0; i < entries.Length; i++)

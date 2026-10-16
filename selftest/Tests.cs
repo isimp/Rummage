@@ -109,6 +109,9 @@ internal sealed class Tests
 
         // The test expects the settings as they ship; the player's own are put back at the end.
         var restoreSettings = Settings.UseDefaults();
+        // So is what the search box last used: Enter on something found takes rather than finds.
+        string ownLastUsed = LastUsed.Current.Save();
+        LastUsed.Forget();
         _site = new Site(_player, _checks);
         bool built = Guarded("building the test site", _site.Build);
         if (built)
@@ -136,6 +139,8 @@ internal sealed class Tests
             yield return Part("a recipe in the crafting tab, pressed twice", Recipe());
             yield return Part("filling a stack", TopUp());
             yield return Part("the search box", SearchBox());
+            yield return Part("a build piece with PiecePress FullSet", FullSetPiece());
+            yield return Part("what the search box last found or took", LastUsedRows());
             yield return Part("new items", NewToYou());
             yield return Part("the settings", SettingsChange());
             yield return Part("a chest held by a game that never answers", NeverAnswers());
@@ -146,6 +151,7 @@ internal sealed class Tests
         _checks.Start("putting everything back");
         Guarded("putting everything back", _site.TearDown);
         Guarded("putting the player's settings back", restoreSettings);
+        Guarded("putting back what the player's search box last used", () => LastUsed.Replace(ownLastUsed));
         _checks.Summary();
         _player.Message(MessageHud.MessageType.Center, _checks.Failed == 0 ? "Rummage self-test passed" : $"Rummage self-test: {_checks.Failed} failed, see the log");
     }
@@ -513,6 +519,170 @@ internal sealed class Tests
         _checks.Check(!TextInput.IsVisible(), "a few frames later the keys are the game's again");
         yield return Idle();
         _checks.Check(Site.Count(_site.Bag, Site.Wood) - before == 40, "40 wood arrived", (Site.Count(_site.Bag, Site.Wood) - before).ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>
+    /// Under PiecePress FullSet every press for a piece takes its whole cost though the inventory
+    /// holds enough already, the build box shows what is carried as a plain number, UntilCarried
+    /// still hides it while one can be built, and a count typed in the search box brings whole sets.
+    /// </summary>
+    private IEnumerator FullSetPiece()
+    {
+        _site.ClearBag();
+        _site.Refill();
+        var piece = ZNetScene.instance.GetPrefab("piece_workbench")?.GetComponent<Piece>();
+        var hammer = Site.Make("Hammer", 1);
+        _site.Bag.AddItem(hammer);
+        _player.EquipItem(hammer, triggerEquipEffects: false);
+        yield return Until(() => _player.InPlaceMode(), 3f);
+        if (!_player.InPlaceMode() || !piece || !_player.SetSelectedPiece(piece))
+        {
+            _checks.Skip("the hammer could not be taken up with the workbench selected");
+            yield break;
+        }
+
+        string wood = Text.Shown(Site.Wood);
+        int cost = piece.m_resources.Where(r => r.m_resItem.m_itemData.m_shared.m_name == Site.Wood).Sum(r => r.m_amount);
+        Settings.PiecePress.Value = PiecePress.FullSet;
+        _site.Bag.AddItem(Site.Make("Wood", cost));
+        for (int press = 1; press <= 2; press++)
+        {
+            var target = Context.Find(_player, hovered: false);
+            _checks.Check(target?.Count == 1, $"press {press}: it is for one though the inventory holds enough for {press}",
+                target?.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "nothing");
+            if (target == null)
+            {
+                Settings.PiecePress.Value = PiecePress.TopUp;
+                yield break;
+            }
+
+            yield return Grab(target);
+            _checks.Check(Site.Count(_site.Bag, Site.Wood) == cost * (press + 1), $"press {press}: a whole set of wood came on top of what was carried",
+                $"{Site.Count(_site.Bag, Site.Wood)} wood");
+            string expect = $"{target.Label}: took {cost} {wood}";
+            _checks.Check(Grabber.LastLines.Count > 0 && Grabber.LastLines[0].StartsWith(expect, StringComparison.Ordinal),
+                $"press {press}: the summary reads \"{expect}\"", string.Join(" | ", Grabber.LastLines));
+        }
+
+        Plugin.Instance.BuildLine.Refresh();
+        yield return Frames(5);
+        var shown = Hud.instance && Hud.instance.m_buildHud ? Hud.instance.m_buildHud.transform.Find("Rummage/Text")?.GetComponent<TMPro.TMP_Text>() : null;
+        string table = shown ? shown.text : "";
+        string row = table.Split('\n').FirstOrDefault(r => r.StartsWith($"{wood}<pos=", StringComparison.Ordinal)) ?? "";
+        _checks.Check(table.StartsWith($"<color={Readout.Header}>One more", StringComparison.Ordinal), "the build box is headed One more", shown ? table : "not there");
+        _checks.Check(row.Contains($">{cost * 3}<pos=") && row.EndsWith($">{cost}</color>", StringComparison.Ordinal),
+            "its wood row shows what is carried as a plain number and the whole set the key takes", row.Length > 0 ? row : table);
+        Settings.BuildBox.Value = BuildBox.UntilCarried;
+        Plugin.Instance.BuildLine.Refresh();
+        yield return Frames(5);
+        var box = Hud.instance.m_buildHud.transform.Find("Rummage");
+        _checks.Check(box && !box.gameObject.activeSelf, "with BuildBox UntilCarried it hides while the inventory holds enough to build one");
+        Settings.BuildBox.Value = BuildBox.Always;
+
+        var palette = Plugin.Instance.Palette;
+        palette.Open(_player, null);
+        palette.Text = $"2 {Text.Shown(piece.m_name)}";
+        string parts = palette.Results.Count > 0 && palette.Results[0].Kind == EntryKind.Piece ? palette.ChosenParts : "(no workbench listed)";
+        _checks.Check(parts.StartsWith($"{wood} ", StringComparison.Ordinal) && parts.Contains($" / {cost * 2}") && !parts.Contains(" + "),
+            "the chosen piece shows what the chests give against two whole sets", parts);
+        int before = Site.Count(_site.Bag, Site.Wood);
+        var snapshot = Snapshot();
+        palette.PressEnter(_player);
+        yield return Idle();
+        Conserved(snapshot);
+        _checks.Check(Site.Count(_site.Bag, Site.Wood) - before == cost * 2, "two whole sets of wood arrived though the inventory held enough",
+            (Site.Count(_site.Bag, Site.Wood) - before).ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        Settings.PiecePress.Value = PiecePress.TopUp;
+        _site.PutHandsBack();
+        _site.ClearBag();
+    }
+
+    /// <summary>
+    /// The search box remembers the last two things it found or took: listed first with nothing
+    /// typed and marked, Enter on what it found takes one, taking it or finding something else
+    /// ends the find, Shift+Enter finds again, kept for the next game, and /rummage forget clears it.
+    /// </summary>
+    private IEnumerator LastUsedRows()
+    {
+        _site.ClearBag();
+        _site.Refill();
+        LastUsed.Forget();
+        var palette = Plugin.Instance.Palette;
+        string wood = Text.Shown(Site.Wood);
+        string stone = Text.Shown(Site.Stone);
+        Entry FirstListed() => palette.Results.FirstOrDefault(e => e.Kind != EntryKind.New);
+        string Keys(int many) => string.Join(", ", palette.Results.Where(e => e.Kind != EntryKind.New).Take(many).Select(e => e.Key));
+
+        palette.Open(_player, null);
+        palette.Text = wood;
+        palette.PressEnter(_player);
+        _checks.Check(Site.Count(_site.Bag, Site.Wood) == 0 && Finder.LastLines.Any(l => l.StartsWith($"{wood}:", StringComparison.Ordinal)),
+            "Enter on wood finds it and takes nothing", string.Join(" | ", Finder.LastLines));
+
+        palette.Open(_player, null);
+        var first = FirstListed();
+        _checks.Check(first?.Key == Site.Wood, "with nothing typed the wood just found is listed first after the new items row", first?.Shown ?? "nothing");
+        _checks.Check(first != null && palette.Marked(first), "it carries the last used mark");
+        _checks.Check(first != null && palette.DetailOf(first).StartsWith("found · ", StringComparison.Ordinal), "its row says found", first == null ? "" : palette.DetailOf(first));
+        palette.Text = wood;
+        _checks.Check(palette.KeysHint.StartsWith("Enter takes one · Shift+Enter finds again", StringComparison.Ordinal), "the hints say Enter takes one", palette.KeysHint);
+        var snapshot = Snapshot();
+        palette.PressEnter(_player);
+        yield return Idle();
+        Conserved(snapshot);
+        _checks.Check(Site.Count(_site.Bag, Site.Wood) == 1, "Enter on the wood it found takes one", $"{Site.Count(_site.Bag, Site.Wood)} wood");
+
+        palette.Open(_player, null);
+        first = FirstListed();
+        _checks.Check(first != null && palette.DetailOf(first).StartsWith("taken · ", StringComparison.Ordinal), "its row now says taken", first == null ? "" : palette.DetailOf(first));
+        palette.Text = wood;
+        palette.PressEnter(_player);
+        _checks.Check(Site.Count(_site.Bag, Site.Wood) == 1, "taking it ended the find: Enter finds the wood again and takes nothing", $"{Site.Count(_site.Bag, Site.Wood)} wood");
+
+        palette.Open(_player, null);
+        palette.Text = stone;
+        palette.PressEnter(_player);
+        palette.Open(_player, null);
+        palette.Text = wood;
+        _checks.Check(palette.KeysHint.StartsWith("Enter find", StringComparison.Ordinal), "finding stone ended the find of wood", palette.KeysHint);
+        palette.Text = stone;
+        palette.PressEnter(_player, shift: true);
+        _checks.Check(Site.Count(_site.Bag, Site.Stone) == 0 && !Palette.IsOpen, "Shift+Enter on the stone it found finds it again and takes nothing",
+            $"{Site.Count(_site.Bag, Site.Stone)} stone");
+
+        palette.Open(_player, null);
+        _checks.Check(Keys(2) == $"{Site.Stone}, {Site.Wood}", "with nothing typed the two last used come first, newest first", Keys(2));
+        palette.Close();
+
+        string file = LastUsed.FileOfCurrent;
+        LastUsed.ReadAgain();
+        _checks.Check(file != null && System.IO.File.Exists(file) && string.Join(", ", LastUsed.Current.Entries.Select(u => u.Key)) == $"{Site.Stone}, {Site.Wood}",
+            "they are read back from the character's file, as in the next game", file ?? "no file");
+        _checks.Check(LastUsed.Current.IsFound(EntryKind.Item, Site.Stone), "and the stone is still found");
+
+        global::Console.instance.TryRunCommand("rummage forget", silentFail: true, skipAllowedCheck: true);
+        _checks.Check(LastUsed.Current.Entries.Count == 0 && (file == null || !System.IO.File.Exists(file)), "/rummage forget clears them and deletes the file");
+
+        // With RememberLastUsed off nothing is remembered: Enter keeps finding, nothing is listed first or written.
+        Settings.RememberLastUsed.Value = false;
+        palette.Open(_player, null);
+        palette.Text = wood;
+        palette.PressEnter(_player);
+        palette.Open(_player, null);
+        first = FirstListed();
+        _checks.Check(first == null || !palette.Marked(first) && !palette.DetailOf(first).StartsWith("found", StringComparison.Ordinal),
+            "with RememberLastUsed off the wood just found is neither marked nor said found", first == null ? "nothing listed" : palette.DetailOf(first));
+        palette.Text = wood;
+        _checks.Check(palette.KeysHint.StartsWith("Enter find", StringComparison.Ordinal), "and the hints say Enter finds", palette.KeysHint);
+        palette.PressEnter(_player);
+        _checks.Check(Site.Count(_site.Bag, Site.Wood) == 1, "Enter on it finds again and takes nothing", $"{Site.Count(_site.Bag, Site.Wood)} wood");
+        _checks.Check(file == null || !System.IO.File.Exists(file), "and nothing is written to the character's file");
+        Settings.RememberLastUsed.Value = true;
+        _checks.Check(LastUsed.Current.Entries.Count == 0, "turned back on, nothing was remembered meanwhile");
+
+        yield return Frames(4);
+        _site.ClearBag();
     }
 
     /// <summary>

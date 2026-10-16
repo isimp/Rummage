@@ -9,8 +9,9 @@ namespace Rummage.Game;
 
 /// <summary>
 /// The search box: one line of text with ranked results under it. Arrows choose, Tab completes
-/// the chosen name, Enter takes, Escape closes. A number typed before or after the name is the
-/// count; otherwise the slider sets it.
+/// the chosen name, Enter finds or takes, Escape closes. A number typed before or after the name
+/// is the count; otherwise the slider sets it. What it last found or took (<see cref="LastUsed"/>)
+/// is listed first with nothing typed and marked with the game's circling arrows.
 /// </summary>
 internal sealed class Palette
 {
@@ -20,6 +21,9 @@ internal sealed class Palette
     private const float RowHeight = 32f;
     private const float Pad = 30f;
     private const float Top = 140f;
+
+    /// <summary>The size of the last used mark, the game's own 20 pixel circling arrows.</summary>
+    private const float LastUsedMark = 18f;
 
     private readonly Grabber _grabber;
     private Catalog _catalog;
@@ -85,17 +89,26 @@ internal sealed class Palette
     /// <summary>The count read from the text, for the self-test.</summary>
     internal int? TypedCount => Parsed.Count;
 
-    /// <summary>Enter, as the self-test presses it.</summary>
-    internal void PressEnter(Player player)
+    /// <summary>Enter, or Shift+Enter, as the self-test presses it.</summary>
+    internal void PressEnter(Player player, bool shift = false)
     {
         Rank();
-        Enter(player);
+        Enter(player, shift);
     }
+
+    /// <summary>The key hints under the box, for the self-test.</summary>
+    internal string KeysHint => Hint();
+
+    /// <summary>A row's text on its right, for the self-test.</summary>
+    internal string DetailOf(Entry entry) => Detail(entry);
+
+    /// <summary>Whether a row carries the last used mark, for the self-test.</summary>
+    internal bool Marked(Entry entry) => IsLastUsed(entry);
 
     /// <summary>Opens the search box, starting from what the player is looking at when there is something.</summary>
     public void Open(Player player, Target context)
     {
-        _catalog = Catalog.Build(player, Scene.Read(player));
+        _catalog = Catalog.Build(player, Scene.Read(player), LastUsed.Current.Entries);
         _context = context;
         _contextEntry = context == null ? null : new Entry(string.Empty, context.Label, context.Kind, context.Count);
         _text = context == null ? string.Empty : $"{context.Count.ToString(CultureInfo.InvariantCulture)} {context.Shown}";
@@ -165,7 +178,7 @@ internal sealed class Palette
 
         _rankedFor = _text;
         var query = Parsed;
-        var ranked = Search.Rank(query.Text, _catalog.Entries).ToList();
+        var ranked = Search.Rank(query.Text, _catalog.Entries, LastUsed.Current.Entries).ToList();
         if (_contextEntry != null && string.Equals(query.Text, _context.Shown, StringComparison.OrdinalIgnoreCase))
         {
             ranked.Insert(0, _contextEntry);
@@ -179,6 +192,11 @@ internal sealed class Palette
     private Entry Chosen => _selected >= 0 && _selected < _results.Count ? _results[_selected] : null;
 
     private Target TargetOf(Entry entry) => entry == _contextEntry ? _context : _catalog.TargetOf(entry);
+
+    /// <summary>The key the entry is remembered by; what the player was looking at has its target's.</summary>
+    private string KeyOf(Entry entry) => entry == _contextEntry ? _context.Key : entry.Key;
+
+    private bool IsLastUsed(Entry entry) => LastUsed.Current.Entries.Any(u => u.Is(entry.Kind, KeyOf(entry)));
 
     /// <summary>Where the count starts for an entry: what the player was looking at asks for its own count, an item a stack.</summary>
     private int StartCount(Entry entry)
@@ -227,7 +245,7 @@ internal sealed class Palette
                 break;
             case KeyCode.Return:
             case KeyCode.KeypadEnter:
-                Enter(player);
+                Enter(player, e.shift);
                 break;
             case KeyCode.UpArrow:
                 Choose(_selected - 1);
@@ -285,18 +303,28 @@ internal sealed class Palette
 
     /// <summary>
     /// With a number in the text, Enter takes that many; without one it finds where the chosen
-    /// entry is. The new items row always takes, one of each.
+    /// entry is, and Enter on what it found last takes one (see <see cref="Recent.Enter"/>).
+    /// Shift+Enter always finds. The new items row always takes, one of each.
     /// </summary>
-    private void Enter(Player player)
+    private void Enter(Player player, bool shift)
     {
-        if (Parsed.Count != null || Chosen?.Kind == EntryKind.New)
+        var chosen = Chosen;
+        if (chosen == null)
         {
-            Take(player);
             return;
         }
 
-        var chosen = Chosen;
-        var target = chosen == null ? null : TargetOf(chosen);
+        switch (LastUsed.Current.Enter(chosen.Kind, KeyOf(chosen), Parsed.Count != null, shift))
+        {
+            case EnterDoes.Take:
+                Take(player);
+                return;
+            case EnterDoes.TakeOne:
+                TakeOne(player, chosen);
+                return;
+        }
+
+        var target = TargetOf(chosen);
         if (target == null || target.Cost.Count == 0)
         {
             return;
@@ -304,6 +332,27 @@ internal sealed class Palette
 
         Close();
         Finder.Find(player, target);
+        LastUsed.Found(chosen.Kind, KeyOf(chosen));
+    }
+
+    /// <summary>
+    /// One of what was found: one item, or for a piece or recipe what a press of the key takes for
+    /// it, by the PiecePress setting for a piece.
+    /// </summary>
+    private void TakeOne(Player player, Entry chosen)
+    {
+        var target = TargetOf(chosen);
+        if (target == null)
+        {
+            return;
+        }
+
+        target = chosen.Kind == EntryKind.Item ? target.WithCount(1)
+            : chosen == _contextEntry ? _context
+            : Context.OneMore(target, player);
+        Close();
+        _grabber.Grab(player, target, Time.time);
+        LastUsed.Took(chosen.Kind, KeyOf(chosen));
     }
 
     private void Take(Player player)
@@ -326,6 +375,7 @@ internal sealed class Palette
         target = target.WithCount(CountFor(chosen));
         Close();
         _grabber.Grab(player, target, Time.time);
+        LastUsed.Took(chosen.Kind, KeyOf(chosen));
     }
 
     /// <summary>
@@ -364,12 +414,23 @@ internal sealed class Palette
         y += 32f;
         DrawCount(new Rect(inner, y, width, 36f), player);
         y += 44f;
-        string keys = Chosen?.Kind == EntryKind.New
-            ? "Enter takes one of each · ↑↓ choose · Esc close"
-            : "Enter find · a number, then Enter, takes · Tab complete · ↑↓ choose · Esc close";
-        GUI.Label(new Rect(inner + 4f, y, width - 8f, 24f), keys, Skin.Hint);
+        GUI.Label(new Rect(inner + 4f, y, width - 8f, 24f), Hint(), Skin.Hint);
 
         GUI.matrix = matrix;
+    }
+
+    /// <summary>The key hints for the chosen entry: what Enter does with it now.</summary>
+    private string Hint()
+    {
+        var chosen = Chosen;
+        if (chosen?.Kind == EntryKind.New)
+        {
+            return "Enter takes one of each · ↑↓ choose · Esc close";
+        }
+
+        return chosen != null && LastUsed.Current.Enter(chosen.Kind, KeyOf(chosen), Parsed.Count != null, shift: false) == EnterDoes.TakeOne
+            ? "Enter takes one · Shift+Enter finds again · ↑↓ choose · Esc close"
+            : "Enter find · a number, then Enter, takes · Tab complete · ↑↓ choose · Esc close";
     }
 
     private void DrawField(Rect area)
@@ -439,7 +500,7 @@ internal sealed class Palette
                 _selected = index;
                 if (e.clickCount > 1)
                 {
-                    Enter(player);
+                    Enter(player, shift: false);
                 }
 
                 e.Use();
@@ -452,6 +513,15 @@ internal sealed class Palette
             var icon = entry == _contextEntry ? _context.Icon : _catalog.IconOf(entry);
             UiArt.Icon(new Rect(rect.x + 6f, rect.y + 3f, RowHeight - 6f, RowHeight - 6f), icon);
             float left = rect.x + RowHeight + 6f;
+            if (IsLastUsed(entry))
+            {
+                var color = GUI.color;
+                GUI.color = UiArt.Beige;
+                UiArt.Icon(new Rect(left, rect.y + (RowHeight - LastUsedMark) / 2f, LastUsedMark, LastUsedMark), UiArt.Get("refresh_icon"));
+                GUI.color = color;
+                left += LastUsedMark + 6f;
+            }
+
             GUI.Label(new Rect(left, rect.y, rect.width * 0.6f, rect.height), entry.Shown, chosen ? Skin.Chosen : Skin.Name);
             GUI.Label(new Rect(rect.x + rect.width * 0.5f, rect.y, rect.width * 0.5f - 8f, rect.height), Detail(entry), Skin.Detail);
         }
@@ -603,14 +673,17 @@ internal sealed class Palette
             return Readout.Item(_catalog.Carried.TryGetValue(name, out int c) ? c : 0, _catalog.InChests.TryGetValue(name, out int t) ? t : 0);
         }
 
-        return Readout.Parts(Cost.Sum(target.Cost), CountFor(entry), _catalog.Carried, _catalog.InChests, Rummage.Game.Text.Shown);
+        return Readout.Parts(Cost.Sum(target.Cost), CountFor(entry), _catalog.Carried, _catalog.InChests, Rummage.Game.Text.Shown,
+            Presses.CountsCarried(target.Kind, Settings.PiecePress.Value));
     }
 
+    /// <summary>A row's text on its right, with "found" or "taken" in front for what the search box last used.</summary>
     private string Detail(Entry entry)
     {
         if (!_details.TryGetValue(entry, out string text))
         {
-            text = DetailText(entry);
+            string tag = LastUsed.Current.Tag(entry.Kind, KeyOf(entry));
+            text = tag == null ? DetailText(entry) : $"{tag} · {DetailText(entry)}";
             _details[entry] = text;
         }
 

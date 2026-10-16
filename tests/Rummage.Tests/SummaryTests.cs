@@ -131,6 +131,44 @@ public class SummaryTests
         Assert.StartsWith("<color=#A89F91>For 1<pos=74>carried<pos=168>F7 takes</color>", Readout.Panel(plan, 1, "F7", Shown, Width));
     }
 
+    private static string[] FullSetRows(Plan plan, Dictionary<string, int> carried) => Readout.FullSetPanel(plan, carried, "J", Shown, Width).Split('\n');
+
+    [Fact]
+    public void WithFullSetTheBuildBoxShowsWhatYouCarryAndTheWholeSetTheKeyTakes()
+    {
+        var plan = Plan(Inventory(Stack(Wood, 7)), false, [Bring(Wood, 10), Bring(Stone, 4)],
+            Chest(1, 5, Stack(Wood, 50), Stack(Stone, 50, x: 1)));
+
+        // "One more" is the widest entry of the names column, "carried" of the carried column.
+        Assert.Equal(
+        [
+            "<color=#A89F91>One more<pos=104>carried<pos=198>J takes</color>",
+            "Wood<pos=104>7<pos=198><color=#FFA13C>10</color>",
+            "Stone<pos=104>0<pos=198><color=#FFA13C>4</color>",
+        ], FullSetRows(plan, new() { [Wood] = 7 }));
+    }
+
+    [Fact]
+    public void WithFullSetAPartTheChestsLackIsStillMarked()
+    {
+        var plan = Plan(Inventory(), false, [Bring(Stone, 4), Bring(Cores, 2)], Chest(1, 5, Stack(Stone, 2)));
+
+        string[] rows = FullSetRows(plan, []);
+        Assert.EndsWith("<color=#FFA13C>2</color> · <color=#E8604C>2 short</color>", rows[1]);
+        Assert.EndsWith("<color=#E8604C>none</color>", rows[2]);
+    }
+
+    [Fact]
+    public void WithFullSetTheSearchBoxShowsWhatTheChestsGiveAgainstTheWholeSets()
+    {
+        var cost = new Dictionary<string, int> { [Wood] = 10, [Cores] = 2 };
+        var carried = new Dictionary<string, int> { [Wood] = 12 };
+        var takeable = new Dictionary<string, int> { [Wood] = 10, [Cores] = 1 };
+
+        // The 12 wood carried would make up 20, but under FullSet the chests have to give it all.
+        Assert.Equal("Wood 10 / 20 (short) · Surtling core 1 / 4 (short)", Readout.Parts(cost, 2, carried, takeable, Shown, countsCarried: false));
+    }
+
     [Fact]
     public void TheSearchBoxShowsEachPartCarriedAndInTheChestsAgainstTheCount()
     {
@@ -146,6 +184,7 @@ public class SummaryTests
     [InlineData(19, 20, "19 to take, 20 nearby")]
     [InlineData(0, 1, "1 nearby, none to take")]
     [InlineData(5, 0, "5 in chests")]
+    [InlineData(0, 0, "none nearby")]
     public void AnItemRowSaysWhetherThereIsAnythingToTake(int takeable, int held, string shown)
     {
         Assert.Equal(shown, Readout.Stocked(takeable, held));

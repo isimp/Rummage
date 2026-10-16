@@ -168,18 +168,29 @@ internal static class Search
     /// The whole name first, then names starting with the text, then a word in the name starting
     /// with it, then the text anywhere in the name, then its letters in order. Among equal matches
     /// the shorter name comes first, as it is closer to what was typed, then what the chests hold
-    /// most of. With nothing typed, the new items row when there is one, then everything the chests
-    /// hold by name, also what cannot be taken.
+    /// most of. With nothing typed, the new items row when there is one, then what was last found
+    /// or taken (<paramref name="recent"/>, newest first, also a piece or recipe and an item no
+    /// chest nearby holds any more), then everything the chests hold by name, also what cannot be
+    /// taken.
     /// </summary>
-    public static IReadOnlyList<Entry> Rank(string text, IEnumerable<Entry> entries)
+    public static IReadOnlyList<Entry> Rank(string text, IEnumerable<Entry> entries, IEnumerable<Used> recent = null)
     {
         text = (text ?? string.Empty).Trim();
         if (text.Length == 0)
         {
-            return entries.Where(e => e.Kind is EntryKind.Item or EntryKind.New && e.Held > 0)
-                .OrderBy(e => e.Kind == EntryKind.New ? 0 : 1)
-                .ThenBy(e => e.Shown, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            var all = entries.ToList();
+            var ranked = all.Where(e => e.Kind == EntryKind.New && e.Held > 0).ToList();
+            foreach (var used in recent ?? [])
+            {
+                if (all.FirstOrDefault(e => used.Is(e.Kind, e.Key)) is Entry entry && !ranked.Contains(entry))
+                {
+                    ranked.Add(entry);
+                }
+            }
+
+            ranked.AddRange(all.Where(e => e.Kind == EntryKind.Item && e.Held > 0 && !ranked.Contains(e))
+                .OrderBy(e => e.Shown, StringComparer.OrdinalIgnoreCase));
+            return ranked;
         }
 
         return entries.Select(e => (Entry: e, Score: Score(text, e.Shown)))

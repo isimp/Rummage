@@ -24,7 +24,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string Guid = "isimp.Rummage";
     public const string Name = "Rummage";
-    public const string Version = "0.2.0";
+    public const string Version = "0.3.0";
 
     private readonly Grabber _grabber = new();
     private readonly BuildReadout _readout = new();
@@ -54,6 +54,11 @@ public sealed class Plugin : BaseUnityPlugin
         _harmony = new Harmony(Guid);
         _harmony.PatchAll(typeof(Plugin).Assembly);
         Commands.Add("new", "takes one of every item in the chests nearby you have never carried", _ => TakeNew(Player.m_localPlayer));
+        Commands.Add("forget", "forgets what the search box last found or took for this character", args =>
+        {
+            LastUsed.Forget();
+            args.Context?.AddString("Rummage: the search box no longer remembers what it last found or took for this character.");
+        });
     }
 
     private void Start()

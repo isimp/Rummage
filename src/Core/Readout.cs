@@ -52,6 +52,26 @@ internal static class Readout
     }
 
     /// <summary>
+    /// The table beside the build panel when every press brings a piece's whole cost
+    /// (<see cref="PiecePress.FullSet"/>): a header naming the key, then one row per part with
+    /// what the inventory holds, as a plain number since it does not count towards the press, and
+    /// what the press takes, marked as in <see cref="Panel"/> where the chests cannot give it all.
+    /// </summary>
+    public static string FullSetPanel(Plan plan, IReadOnlyDictionary<string, int> carried, string key, Func<string, string> shown, Func<string, float> width)
+    {
+        const string Head = "One more";
+        var rows = plan.Outcomes.Select(o => (Name: shown(o.Name), Carried: Number(carried.TryGetValue(o.Name, out int c) ? c : 0), Outcome: o)).ToList();
+        float carriedAt = rows.Select(r => width(r.Name)).Append(width(Head)).Max() + Gap;
+        float takesAt = carriedAt + rows.Select(r => width(r.Carried)).Append(width("carried")).Max() + Gap;
+        string carriedPos = $"<pos={Position(carriedAt)}>";
+        string takesPos = $"<pos={Position(takesAt)}>";
+
+        var lines = new List<string> { $"<color={Header}>{Head}{carriedPos}carried{takesPos}{key} takes</color>" };
+        lines.AddRange(rows.Select(r => $"{r.Name}{carriedPos}{r.Carried}{takesPos}{Takes(r.Outcome)}"));
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>
     /// Whether the build box shows, as set, given the plan for one of the piece: with
     /// <see cref="BuildBox.UntilCarried"/> it hides while the inventory holds enough to build one.
     /// </summary>
@@ -83,21 +103,36 @@ internal static class Readout
 
     private static string Position(float at) => at.ToString("0", CultureInfo.InvariantCulture);
 
-    /// <summary>A piece's or recipe's parts in the search box: carried, plus what the chests give, against what the count needs.</summary>
+    /// <summary>
+    /// A piece's or recipe's parts in the search box: carried, plus what the chests give, against
+    /// what the count needs. When what is carried does not count (<paramref name="countsCarried"/>
+    /// false, a piece under <see cref="PiecePress.FullSet"/>), what the chests give against what
+    /// the count brings.
+    /// </summary>
     public static string Parts(IReadOnlyDictionary<string, int> cost, int count, IReadOnlyDictionary<string, int> carried,
-        IReadOnlyDictionary<string, int> takeable, Func<string, string> shown)
+        IReadOnlyDictionary<string, int> takeable, Func<string, string> shown, bool countsCarried = true)
         => string.Join(" · ", cost.Where(p => p.Value > 0).Select(part =>
         {
             int need = part.Value * Math.Max(1, count);
-            int have = carried.TryGetValue(part.Key, out int c) ? c : 0;
+            int have = countsCarried && carried.TryGetValue(part.Key, out int c) ? c : 0;
             int give = takeable.TryGetValue(part.Key, out int t) ? t : 0;
-            string text = $"{shown(part.Key)} {Number(have)} + {Number(give)} / {Number(need)}";
+            string text = countsCarried
+                ? $"{shown(part.Key)} {Number(have)} + {Number(give)} / {Number(need)}"
+                : $"{shown(part.Key)} {Number(give)} / {Number(need)}";
             return have + give < need ? $"{text} (short)" : text;
         }));
 
-    /// <summary>An item's row in the search box: whether there is anything to take of what the chests hold nearby.</summary>
+    /// <summary>
+    /// An item's row in the search box: whether there is anything to take of what the chests hold
+    /// nearby, or that none is nearby, for an item listed because the search box last used it.
+    /// </summary>
     public static string Stocked(int takeable, int held)
     {
+        if (takeable == 0 && held == 0)
+        {
+            return "none nearby";
+        }
+
         if (takeable >= held)
         {
             return $"{Number(takeable)} in chests";
