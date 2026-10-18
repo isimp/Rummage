@@ -190,7 +190,7 @@ internal sealed class BuildReadout
 
         _line = copy.GetComponent<TMP_Text>();
         _line.richText = true;
-        _line.enableWordWrapping = true;
+        _line.textWrappingMode = TextWrappingModes.Normal;
         _line.overflowMode = TextOverflowModes.Overflow;
         _line.fontSize = description.fontSize * 0.9f;
         return _line;
