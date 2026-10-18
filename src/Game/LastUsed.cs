@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using Rummage.Core;
 
@@ -20,10 +19,13 @@ internal static class LastUsed
     private static Recent _recent = new();
     private static long _player = long.MinValue;
     private static int _saved;
-    private static bool _told;
+    private static RecentFile _files;
 
     /// <summary>The folder the files are in, one per character, named by its player id.</summary>
     internal static string Folder => Path.Combine(BepInEx.Paths.CachePath, Plugin.Guid, "last-used");
+
+    /// <summary>The files, made on first use, once BepInEx's paths are set.</summary>
+    private static RecentFile Files => _files ??= new RecentFile(Folder, message => Plugin.Log.LogWarning(message));
 
     /// <summary>The character being played's, read from its file the first time; nothing while RememberLastUsed is off.</summary>
     public static Recent Current => Settings.RememberLastUsed.Value ? Loaded : Off;
@@ -36,7 +38,7 @@ internal static class LastUsed
             if (player != _player)
             {
                 _player = player;
-                _recent = player == 0 ? new Recent() : Read(FileOf(player));
+                _recent = player == 0 ? new Recent() : Files.Read(player);
                 _saved = _recent.Revision;
             }
 
@@ -72,23 +74,11 @@ internal static class LastUsed
             return;
         }
 
-        try
-        {
-            // File.Delete throws when the folder is missing, which it is until the first save.
-            string path = FileOf(_player);
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-        }
-        catch (Exception e)
-        {
-            WarnOnce("delete", e);
-        }
+        Files.Delete(_player);
     }
 
     /// <summary>The path of the file for the character being played, for the self-test.</summary>
-    internal static string FileOfCurrent => _player == 0 ? null : FileOf(_player);
+    internal static string FileOfCurrent => _player == 0 ? null : Files.PathOf(_player);
 
     /// <summary>Reads the character's file again, as at the next game, for the self-test.</summary>
     internal static void ReadAgain() => _player = long.MinValue;
@@ -115,47 +105,11 @@ internal static class LastUsed
             return;
         }
 
-        try
+        if (Files.Write(_player, _recent))
         {
-            Directory.CreateDirectory(Folder);
-            string path = FileOf(_player);
-            string temp = path + ".tmp";
-            // Written beside the file first, so a game that ends meanwhile leaves the old file whole.
-            File.WriteAllText(temp, _recent.Save());
-            File.Copy(temp, path, overwrite: true);
-            File.Delete(temp);
-
             _saved = _recent.Revision;
         }
-        catch (Exception e)
-        {
-            WarnOnce("write", e);
-        }
     }
-
-    private static Recent Read(string path)
-    {
-        try
-        {
-            return File.Exists(path) ? Recent.Load(File.ReadAllText(path)) : new Recent();
-        }
-        catch (Exception e)
-        {
-            WarnOnce("read", e);
-            return new Recent();
-        }
-    }
-
-    private static string FileOf(long player) => Path.Combine(Folder, player.ToString(System.Globalization.CultureInfo.InvariantCulture) + ".txt");
 
     private static long PlayerId() => global::Game.instance != null && global::Game.instance.GetPlayerProfile() != null ? global::Game.instance.GetPlayerProfile().GetPlayerID() : 0;
-
-    private static void WarnOnce(string what, Exception e)
-    {
-        if (!_told)
-        {
-            _told = true;
-            Plugin.Log.LogWarning($"Could not {what} the search box's last used file in {Folder}: {e.GetType().Name}: {e.Message}");
-        }
-    }
 }
