@@ -24,6 +24,13 @@ internal static class CatalogRules
         }
     }
 
+    /// <summary>
+    /// Whether the kept pieces and recipes are used again: while what they depend on, given as
+    /// <paramref name="now"/> and as it was when they were made, has not changed, and while any
+    /// are kept at all; otherwise they are made again.
+    /// </summary>
+    public static bool Reuse<TKey>(TKey now, TKey was, int kept) where TKey : IEquatable<TKey> => kept > 0 && now.Equals(was);
+
     /// <summary>Whether a piece or recipe is listed, as the ShowPieces and ShowRecipes settings say.</summary>
     public static bool Lists(EntryKind kind, bool pieces, bool recipes) => kind == EntryKind.Piece ? pieces : recipes;
 }

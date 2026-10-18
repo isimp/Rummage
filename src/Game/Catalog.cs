@@ -136,7 +136,7 @@ internal sealed class Catalog
     {
         var key = (ObjectDB.instance ? ObjectDB.instance.GetInstanceID() : 0, player.GetPlayerID(),
             KnownRecipes(player)?.Count ?? -1, KnownMaterials(player)?.Count ?? -1, Localization.instance?.GetSelectedLanguage() ?? string.Empty);
-        if (key == _costedFor && CostedCache.Count > 0)
+        if (CatalogRules.Reuse(key, _costedFor, CostedCache.Count))
         {
             return CostedCache;
         }

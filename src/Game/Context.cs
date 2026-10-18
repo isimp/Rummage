@@ -151,20 +151,23 @@ internal static class Context
     /// </summary>
     internal static Target Find(Player player, bool hovered)
     {
-        if (InventoryGui.IsVisible() && InventoryGui.instance)
+        bool inventoryOpen = InventoryGui.IsVisible() && InventoryGui.instance;
+        foreach (var aim in ContextRules.Order(inventoryOpen, hovered, Settings.TopUpStacks.Value, Settings.TakeForRecipes.Value, Settings.TakeForPieces.Value))
         {
-            if (hovered && Settings.TopUpStacks.Value && HoveredStack(player) is ItemDrop.ItemData held)
+            var target = aim switch
             {
-                return Target.ForTopUp(Scene.StackOf(held), Settings.TopUpAmount.Value);
-            }
+                Aim.TopUp => HoveredStack(player) is ItemDrop.ItemData held ? Target.ForTopUp(Scene.StackOf(held), Settings.TopUpAmount.Value) : null,
+                Aim.Recipe => Recipe(player) is Target recipe ? OneMore(recipe, player) : null,
+                _ => PieceTarget(player),
+            };
 
-            if (Settings.TakeForRecipes.Value && Recipe(player) is Target recipe)
+            if (target != null)
             {
-                return OneMore(recipe, player);
+                return target;
             }
         }
 
-        return Settings.TakeForPieces.Value ? PieceTarget(player) : null;
+        return null;
     }
 
     /// <summary>The build piece under the cursor in the build menu, else the one being placed, for the next press.</summary>

@@ -209,4 +209,80 @@ public class CatalogRulesTests
         Assert.True(CatalogRules.Lists(EntryKind.Recipe, pieces: false, recipes: true));
         Assert.False(CatalogRules.Lists(EntryKind.Piece, pieces: false, recipes: true));
     }
+
+}
+
+/// <summary>
+/// The pieces and recipes the search box lists are kept between openings and made again only when
+/// the item list, the character, the known recipes or materials, or the language changed, or once
+/// they were forgotten.
+/// </summary>
+public class KeptListTests
+{
+    private static (int Items, long Player, int Recipes, int Materials, string Language) Key(int recipes = 10, int materials = 40,
+        string language = "English", long player = 7, int items = 1) => (items, player, recipes, materials, language);
+
+    [Fact]
+    public void TheKeptListIsUsedAgainWhileNothingItDependsOnChanged()
+    {
+        Assert.True(CatalogRules.Reuse(Key(), Key(), kept: 120));
+    }
+
+    [Fact]
+    public void ItIsMadeAgainWhenThePlayerLearnsARecipeOrAMaterial()
+    {
+        Assert.False(CatalogRules.Reuse(Key(recipes: 11), Key(), kept: 120));
+        Assert.False(CatalogRules.Reuse(Key(materials: 41), Key(), kept: 120));
+    }
+
+    [Fact]
+    public void ItIsMadeAgainForAnotherCharacterLanguageOrItemList()
+    {
+        Assert.False(CatalogRules.Reuse(Key(player: 8), Key(), kept: 120));
+        Assert.False(CatalogRules.Reuse(Key(language: "German"), Key(), kept: 120));
+        Assert.False(CatalogRules.Reuse(Key(items: 2), Key(), kept: 120));
+    }
+
+    [Fact]
+    public void ItIsMadeAgainOnceForgotten()
+    {
+        Assert.False(CatalogRules.Reuse(Key(), Key(), kept: 0));
+    }
+}
+
+/// <summary>
+/// What the key is for, tried in this order until one is there: with the inventory open, the
+/// carried stack under the cursor, then the recipe selected in the crafting tab; then the build
+/// piece in view. Each is left out while its setting is off, and the stack under the cursor also
+/// where it cannot be pointed at, as in the self-test.
+/// </summary>
+public class AimTests
+{
+    [Fact]
+    public void WithTheInventoryOpenTheStackComesFirstThenTheRecipeThenThePiece()
+    {
+        Assert.Equal(new[] { Aim.TopUp, Aim.Recipe, Aim.Piece },
+            ContextRules.Order(inventoryOpen: true, hovered: true, topUps: true, recipes: true, pieces: true));
+    }
+
+    [Fact]
+    public void WithTheInventoryClosedOnlyThePieceCounts()
+    {
+        Assert.Equal(new[] { Aim.Piece }, ContextRules.Order(inventoryOpen: false, hovered: true, topUps: true, recipes: true, pieces: true));
+    }
+
+    [Fact]
+    public void EachIsLeftOutWhileItsSettingIsOff()
+    {
+        Assert.Equal(new[] { Aim.Recipe, Aim.Piece }, ContextRules.Order(inventoryOpen: true, hovered: true, topUps: false, recipes: true, pieces: true));
+        Assert.Equal(new[] { Aim.TopUp, Aim.Piece }, ContextRules.Order(inventoryOpen: true, hovered: true, topUps: true, recipes: false, pieces: true));
+        Assert.Equal(new[] { Aim.TopUp, Aim.Recipe }, ContextRules.Order(inventoryOpen: true, hovered: true, topUps: true, recipes: true, pieces: false));
+        Assert.Empty(ContextRules.Order(inventoryOpen: false, hovered: true, topUps: true, recipes: true, pieces: false));
+    }
+
+    [Fact]
+    public void TheStackUnderTheCursorIsLeftOutWhereItCannotBePointedAt()
+    {
+        Assert.Equal(new[] { Aim.Recipe, Aim.Piece }, ContextRules.Order(inventoryOpen: true, hovered: false, topUps: true, recipes: true, pieces: true));
+    }
 }
