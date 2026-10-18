@@ -53,7 +53,7 @@ internal sealed class Catalog
             var held = Held(player, scene);
             // An item the search box last found or took stays listed when no chest nearby holds it any more.
             var lastUsed = (recent ?? []).Where(u => u.Kind == EntryKind.Item).Select(u => u.Key);
-            foreach (string name in held.Keys.Union(stock.Keys).Union(lastUsed))
+            foreach (string name in CatalogRules.ItemNames(held.Keys, stock.Keys, lastUsed))
             {
                 int takeable = stock.TryGetValue(name, out int t) ? t : 0;
                 catalog.Add(new Entry(name, Text.Shown(name), EntryKind.Item, takeable, held.TryGetValue(name, out int h) ? h : 0),
@@ -72,7 +72,7 @@ internal sealed class Catalog
         bool recipes = Settings.ShowRecipes.Value;
         foreach (var (key, unit) in pieces || recipes ? Costed(player) : [])
         {
-            if (unit.Kind == EntryKind.Piece ? pieces : recipes)
+            if (CatalogRules.Lists(unit.Kind, pieces, recipes))
             {
                 catalog.Guarded(key, () => catalog.AddCosted(unit, key, carried, stock));
             }
@@ -117,11 +117,7 @@ internal sealed class Catalog
             }
         }
 
-        foreach (var item in reachable)
-        {
-            held[item.Key] = Math.Max(item.Value, held.TryGetValue(item.Key, out int n) ? n : 0);
-        }
-
+        CatalogRules.MergeReachable(held, reachable);
         return held;
     }
 

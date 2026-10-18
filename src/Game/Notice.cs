@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rummage.Core;
 
 namespace Rummage.Game;
 
@@ -10,18 +11,18 @@ internal static class Notice
 {
     public static void Say(Player player, IReadOnlyList<string> lines)
     {
-        if (!player || lines == null || lines.Count == 0)
+        if (!player)
         {
             return;
         }
 
-        if (InventoryGui.IsVisible())
+        var (centre, corner) = Placement.Of(InventoryGui.IsVisible(), lines);
+        if (centre != null)
         {
-            player.Message(MessageHud.MessageType.Center, string.Join("\n", lines));
-            return;
+            player.Message(MessageHud.MessageType.Center, centre);
         }
 
-        foreach (string line in lines)
+        foreach (string line in corner)
         {
             player.Message(MessageHud.MessageType.TopLeft, line);
         }

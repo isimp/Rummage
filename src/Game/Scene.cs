@@ -116,12 +116,8 @@ internal sealed class Scene
 
     private static Bar BarOf(Container chest, Piece piece, ZNetView view, Player player)
     {
-        if ((view.GetZDO().GetInt(ZDOVars.s_inUse) == 1 && !chest.IsInUse()) || (chest.m_wagon && chest.m_wagon.InUse()))
-        {
-            return Bar.InUse;
-        }
-
-        return chest.m_privacy == Container.PrivacySetting.Private && piece.GetCreator() != player.GetPlayerID() ? Bar.Private : Bar.Locked;
+        return ChestRules.BarOf(view.GetZDO().GetInt(ZDOVars.s_inUse) == 1 && !chest.IsInUse(), chest.m_wagon && chest.m_wagon.InUse(),
+            Access.PrivacyOf(chest), piece.GetCreator() == player.GetPlayerID());
     }
 
     /// <summary>
@@ -130,12 +126,8 @@ internal sealed class Scene
     /// </summary>
     public static Reach ReachOf(Container chest, ZNetView view)
     {
-        if (view.IsOwner())
-        {
-            return Reach.Owned;
-        }
-
-        return MucLink.Carries(chest, view) ? Reach.Routed : Reach.Closed;
+        bool held = view.IsOwner();
+        return ChestRules.ReachOf(held, !held && MucLink.Carries(chest, view));
     }
 
     /// <summary>What the inventory holds that building and crafting count, by item name.</summary>
@@ -144,7 +136,7 @@ internal sealed class Scene
         var carried = new Dictionary<string, int>(System.StringComparer.Ordinal);
         foreach (var item in player.GetInventory().GetAllItems())
         {
-            if (item?.m_shared != null && item.m_worldLevel >= global::Game.m_worldLevel)
+            if (item?.m_shared != null && ChestRules.Counted(item.m_worldLevel, global::Game.m_worldLevel))
             {
                 carried[item.m_shared.m_name] = (carried.TryGetValue(item.m_shared.m_name, out int n) ? n : 0) + item.m_stack;
             }

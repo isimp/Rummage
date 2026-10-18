@@ -1,3 +1,5 @@
+using Rummage.Core;
+
 namespace Rummage.Game;
 
 /// <summary>
@@ -16,20 +18,22 @@ internal static class Access
             return false;
         }
 
-        if (chest.m_checkGuardStone && !PrivateArea.CheckAccess(chest.transform.position, 0f, flash: false, wardCheck: false))
-        {
-            return false;
-        }
+        bool wardLetsIn = !chest.m_checkGuardStone || PrivateArea.CheckAccess(chest.transform.position, 0f, flash: false, wardCheck: false);
+        var privacy = PrivacyOf(chest);
+        return ChestRules.MayOpen(chest.m_checkGuardStone, wardLetsIn, privacy, privacy == ChestPrivacy.Private && BuiltBy(chest, player));
+    }
 
-        switch (chest.m_privacy)
-        {
-            case Container.PrivacySetting.Public:
-                return true;
-            case Container.PrivacySetting.Private:
-                var piece = chest.GetComponentInParent<Piece>();
-                return piece && piece.GetCreator() == player.GetPlayerID();
-            default:
-                return false;
-        }
+    /// <summary>The chest's privacy setting, as <see cref="ChestRules"/> reads it.</summary>
+    public static ChestPrivacy PrivacyOf(Container chest) => chest.m_privacy switch
+    {
+        Container.PrivacySetting.Public => ChestPrivacy.Public,
+        Container.PrivacySetting.Private => ChestPrivacy.Private,
+        _ => ChestPrivacy.Other,
+    };
+
+    private static bool BuiltBy(Container chest, Player player)
+    {
+        var piece = chest.GetComponentInParent<Piece>();
+        return piece && piece.GetCreator() == player.GetPlayerID();
     }
 }

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using Rummage.Core;
 using UnityEngine;
 
 namespace Rummage.Game;
@@ -10,11 +10,7 @@ namespace Rummage.Game;
 /// </summary>
 internal static class Highlighter
 {
-    private const float Every = 0.1f;
-
-    private static readonly Dictionary<WearNTear, float> Until = new();
-    private static readonly List<WearNTear> Done = new();
-    private static float _next;
+    private static readonly Lights<WearNTear> Lit = new(piece => !piece);
 
     public static void Light(Container chest, float seconds)
     {
@@ -26,37 +22,16 @@ internal static class Highlighter
         var root = chest.m_rootObjectOverride ? chest.m_rootObjectOverride.gameObject : chest.gameObject;
         if (root.TryGetComponent(out WearNTear piece))
         {
-            float end = Time.time + seconds;
-            Until[piece] = Until.TryGetValue(piece, out float was) ? Mathf.Max(was, end) : end;
+            Lit.Light(piece, Time.time + seconds);
             piece.Highlight();
         }
     }
 
     public static void Tick(float now)
     {
-        if (Until.Count == 0 || now < _next)
+        foreach (var piece in Lit.Due(now))
         {
-            return;
+            piece.Highlight();
         }
-
-        _next = now + Every;
-        foreach (var lit in Until)
-        {
-            if (!lit.Key || now >= lit.Value)
-            {
-                Done.Add(lit.Key);
-            }
-            else
-            {
-                lit.Key.Highlight();
-            }
-        }
-
-        foreach (var piece in Done)
-        {
-            Until.Remove(piece);
-        }
-
-        Done.Clear();
     }
 }
