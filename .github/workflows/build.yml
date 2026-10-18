@@ -30,6 +30,11 @@ jobs:
       - name: Test
         run: dotnet test tests/Rummage.Tests --nologo
 
+      # The standards tests compile the source against lib/ and read it with the compiler, so
+      # they need no BepInEx.dll and run here.
+      - name: Standards
+        run: dotnet test tests/Rummage.Standards --nologo
+
       - uses: actions/upload-artifact@v4
         with:
           name: Rummage

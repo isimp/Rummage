@@ -1,0 +1,19 @@
+#!/bin/sh
+# Runs Rummage's standards tests and unit tests before anything is pushed, and stops the push when
+# one fails. Both need nothing but the repository: the standards tests compile against lib/, and
+# the unit tests build src/Core on its own.
+#
+# Git runs hooks only from a folder it is told about, once per clone:
+#   git config core.hooksPath .githooks
+
+root="$(git rev-parse --show-toplevel)"
+
+if ! dotnet test "$root/tests/Rummage.Standards" --nologo --verbosity quiet; then
+    echo "pre-push: the standards tests failed, so nothing was pushed" >&2
+    exit 1
+fi
+
+if ! dotnet test "$root/tests/Rummage.Tests" --nologo --verbosity quiet; then
+    echo "pre-push: the unit tests failed, so nothing was pushed" >&2
+    exit 1
+fi
