@@ -64,7 +64,7 @@ python3 tools/publish.py dist/hexium/Rummage-0.1.0.zip --check-only   # validate
 
 ## Before a release
 
-Run the tests (`dotnet test tests/Rummage.Tests`) and the in-game self-test (`/rummage selftest`, see [technical.md](technical.md#self-test)) against the mod versions the manifest names, ideally next to another player so its last part runs too. Rummage reaches AzuCraftyBoxes, MultiUserChest, ExtraSlots and AzuAntiArthriticCrafting by name at run time, so an update to one of them can change what it finds; the log line at startup says what was found.
+Run the tests (`dotnet test tests/Rummage.Tests` and `dotnet test tests/Rummage.Standards`) and the in-game self-test (`/rummage selftest`, see [technical.md](technical.md#self-test)) against the mod versions the manifest names, ideally next to another player so its last part runs too. Rummage reaches AzuCraftyBoxes, MultiUserChest, ExtraSlots and AzuAntiArthriticCrafting by name at run time, so an update to one of them can change what it finds; the log line at startup says what was found.
 
 ## After a game update
 

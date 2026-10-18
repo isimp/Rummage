@@ -89,6 +89,11 @@ dotnet build                     # against the installed game, deploys to the Ga
 dotnet build selftest            # Rummage and the self-test
 dotnet build -p:LibsDir=lib      # against the stubs in lib/, as CI does
 dotnet test tests/Rummage.Tests
+dotnet test tests/Rummage.Standards
 ```
 
 `VALHEIM_DIR` or `-p:ValheimDir=` points at the game, `-p:ProfileDir=` at the BepInEx profile.
+
+The build itself runs every .NET code analysis rule and fails on any finding (`BuildChecks.props`), but for the few that misread a Unity plugin, which `Analysis.globalconfig` turns off with the reason for each. It also compiles the doc comments, so a link to something renamed fails it. `tests/Rummage.Standards` holds what the compiler cannot. It compiles Rummage's source as the build does, against the stubs in `lib/`, and reads it with the compiler's own types. Text is compared and sorted ordinally, never in the PC's language, and a fraction or a time becomes text the same way on every PC. A Unity object is checked for none by Unity's own test. A failure caught is told in the log, or the catch says what the failure means. Comments carry no dates, each member has one summary of its own, every file under `src/` is compiled into the unit tests or named in `GameOnlyFiles.cs` with why it needs the game, every test-only `Reset()` forgets all its class holds, and the plugin, the project and `manifest.json` name one version. Neither set needs a `BepInEx.dll`, so the build workflow runs both on every push.
+
+`.githooks/pre-push` runs both sets before every push and stops the push when one fails, and `.githooks/commit-msg` refuses a message that carries a clock time. Git uses them once told to, per clone: `git config core.hooksPath .githooks`.
