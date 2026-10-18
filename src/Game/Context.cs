@@ -18,7 +18,7 @@ internal sealed class Target
         Shown = shown;
         Kind = kind;
         Cost = cost;
-        Count = count < 1 ? 1 : count;
+        Count = Labels.Count(count);
         AnyOf = anyOf;
     }
 
@@ -47,9 +47,9 @@ internal sealed class Target
     public UnityEngine.Sprite Icon { get; }
 
     /// <summary>Whether this tops a stack up to a full one.</summary>
-    public bool FillsStack => Into != null && Count >= Into.MaxStack - Into.Count;
+    public bool FillsStack => Labels.FillsStack(Count, Into);
 
-    public string Label => FillsStack ? $"{Shown} to a full stack" : Count > 1 ? $"{Shown} x{Count}" : Shown;
+    public string Label => Labels.Of(Shown, Count, Into);
 
     public Target WithCount(int count) => new(Shown, Kind, Cost, count, AnyOf, Into, Icon, Key);
 
@@ -108,21 +108,22 @@ internal sealed class Target
         foreach (var requirement in recipe.m_resources ?? [])
         {
             var item = requirement?.m_resItem ? requirement.m_resItem.m_itemData : null;
-            if (item?.m_shared == null || requirement.GetAmount(quality) <= 0)
+            if (item?.m_shared == null)
             {
                 continue;
             }
 
-            bool stationFits = station ? station.m_upgrader == requirement.m_upgraderResource : !requirement.m_upgraderResource;
-            if (stationFits && (!recipe.m_requireOnlyOneIngredient || player.IsKnownMaterial(item.m_shared.m_name)))
+            int amount = requirement.GetAmount(quality);
+            bool known = !recipe.m_requireOnlyOneIngredient || player.IsKnownMaterial(item.m_shared.m_name);
+            if (RecipeRules.Counts(amount, station, station && station.m_upgrader, requirement.m_upgraderResource, recipe.m_requireOnlyOneIngredient, known))
             {
-                cost.Add((item.m_shared.m_name, requirement.GetAmount(quality)));
+                cost.Add((item.m_shared.m_name, amount));
             }
         }
 
         // The search box lists a recipe at its first quality, so only that one is remembered by name.
         return new Target(Text.Shown(recipe.m_item.m_itemData.m_shared.m_name), EntryKind.Recipe, cost, count, recipe.m_requireOnlyOneIngredient,
-            icon: recipe.m_item.m_itemData.GetIcon(), key: quality == 1 ? recipe.m_item.m_itemData.m_shared.m_name : null);
+            icon: recipe.m_item.m_itemData.GetIcon(), key: RecipeRules.KeyOf(quality, recipe.m_item.m_itemData.m_shared.m_name));
     }
 }
 
@@ -247,8 +248,7 @@ internal static class Context
         }
 
         var upgrade = _upgradeOf?.GetValue(pair) as ItemDrop.ItemData;
-        int quality = upgrade == null ? 1 : upgrade.m_quality + 1;
-        int count = upgrade == null ? CraftAmountLink.Current() : 1;
+        var (quality, count) = RecipeRules.Craft(upgrade?.m_quality, upgrade == null ? CraftAmountLink.Current() : 1);
         return Target.ForRecipe(recipe, quality, player.GetCurrentCraftingStation(), player, count);
     }
 }

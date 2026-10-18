@@ -32,8 +32,7 @@ internal sealed class Palette
     private IReadOnlyList<Entry> _results = Array.Empty<Entry>();
     private string _text = string.Empty;
     private string _rankedFor;
-    private int _selected;
-    private int _first;
+    private readonly ListWindow _list = new();
     private Entry _countFor;
     private bool _dragging;
     private float _count = 1f;
@@ -113,8 +112,7 @@ internal sealed class Palette
         _contextEntry = context == null ? null : new Entry(string.Empty, context.Label, context.Kind, context.Count);
         _text = context == null ? string.Empty : $"{context.Count.ToString(CultureInfo.InvariantCulture)} {context.Shown}";
         _rankedFor = null;
-        _selected = 0;
-        _first = 0;
+        _list.Restart();
         _countFor = null;
         _details.Clear();
         _partsFor = null;
@@ -179,17 +177,16 @@ internal sealed class Palette
         _rankedFor = _text;
         var query = Parsed;
         var ranked = Search.Rank(query.Text, _catalog.Entries, LastUsed.Current.Entries).ToList();
-        if (_contextEntry != null && string.Equals(query.Text, _context.Shown, StringComparison.OrdinalIgnoreCase))
+        if (_contextEntry != null && SearchBoxRules.ContextFirst(query.Text, _context.Shown))
         {
             ranked.Insert(0, _contextEntry);
         }
 
         _results = ranked;
-        _selected = 0;
-        _first = 0;
+        _list.Restart();
     }
 
-    private Entry Chosen => _selected >= 0 && _selected < _results.Count ? _results[_selected] : null;
+    private Entry Chosen => _list.Selected >= 0 && _list.Selected < _results.Count ? _results[_list.Selected] : null;
 
     private Target TargetOf(Entry entry) => entry == _contextEntry ? _context : _catalog.TargetOf(entry);
 
@@ -199,20 +196,13 @@ internal sealed class Palette
     private bool IsLastUsed(Entry entry) => LastUsed.Current.Entries.Any(u => u.Is(entry.Kind, KeyOf(entry)));
 
     /// <summary>Where the count starts for an entry: what the player was looking at asks for its own count, an item a stack.</summary>
-    private int StartCount(Entry entry)
-    {
-        if (entry == _contextEntry)
-        {
-            return _context.Count;
-        }
-
-        return entry.Kind == EntryKind.Item ? Math.Max(1, Math.Min(_catalog.StackSize(entry.Key), entry.InChests)) : 1;
-    }
+    private int StartCount(Entry entry) =>
+        entry == _contextEntry ? _context.Count : SearchBoxRules.StartCount(entry.Kind, _catalog.StackSize(entry.Key), entry.InChests);
 
     /// <summary>The slider's top: what the chests give of an item, or how many of a piece or recipe can be paid for.</summary>
-    private int MaxCount(Entry entry) => Math.Max(StartCount(entry), Math.Max(1, entry.InChests));
+    private int MaxCount(Entry entry) => SearchBoxRules.MaxCount(StartCount(entry), entry.InChests);
 
-    private int CountFor(Entry entry) => Parsed.Count ?? Mathf.RoundToInt(_count);
+    private int CountFor(Entry entry) => SearchBoxRules.CountFor(Parsed.Count, _count);
 
     /// <summary>The search text parsed once per change rather than on every drawing pass.</summary>
     private Query Parsed
@@ -248,16 +238,16 @@ internal sealed class Palette
                 Enter(player, e.shift);
                 break;
             case KeyCode.UpArrow:
-                Choose(_selected - 1);
+                Choose(_list.Selected - 1);
                 break;
             case KeyCode.DownArrow:
-                Choose(_selected + 1);
+                Choose(_list.Selected + 1);
                 break;
             case KeyCode.PageUp:
-                Choose(_selected - VisibleRows);
+                Choose(_list.Selected - VisibleRows);
                 break;
             case KeyCode.PageDown:
-                Choose(_selected + VisibleRows);
+                Choose(_list.Selected + VisibleRows);
                 break;
             case KeyCode.Tab:
                 Complete();
@@ -271,20 +261,7 @@ internal sealed class Palette
 
     private void Choose(int index)
     {
-        if (_results.Count == 0)
-        {
-            return;
-        }
-
-        _selected = Mathf.Clamp(index, 0, _results.Count - 1);
-        if (_selected < _first)
-        {
-            _first = _selected;
-        }
-        else if (_selected >= _first + VisibleRows)
-        {
-            _first = _selected - VisibleRows + 1;
-        }
+        _list.Choose(index, _results.Count, VisibleRows);
     }
 
     /// <summary>Tab puts the chosen name into the box, keeping a typed count.</summary>
@@ -423,14 +400,8 @@ internal sealed class Palette
     private string Hint()
     {
         var chosen = Chosen;
-        if (chosen?.Kind == EntryKind.New)
-        {
-            return "Enter takes one of each · ↑↓ choose · Esc close";
-        }
-
-        return chosen != null && LastUsed.Current.Enter(chosen.Kind, KeyOf(chosen), Parsed.Count != null, shift: false) == EnterDoes.TakeOne
-            ? "Enter takes one · Shift+Enter finds again · ↑↓ choose · Esc close"
-            : "Enter find · a number, then Enter, takes · Tab complete · ↑↓ choose · Esc close";
+        return SearchBoxRules.Hint(chosen?.Kind == EntryKind.New,
+            chosen != null && LastUsed.Current.Enter(chosen.Kind, KeyOf(chosen), Parsed.Count != null, shift: false) == EnterDoes.TakeOne);
     }
 
     private void DrawField(Rect area)
@@ -466,7 +437,7 @@ internal sealed class Palette
         var e = Event.current;
         if (e.type == EventType.ScrollWheel && area.Contains(e.mousePosition))
         {
-            _first = Mathf.Clamp(_first + (e.delta.y > 0 ? 3 : -3), 0, Math.Max(0, _results.Count - VisibleRows));
+            _list.Scroll(e.delta.y > 0, _results.Count, VisibleRows);
             e.Use();
         }
 
@@ -477,12 +448,12 @@ internal sealed class Palette
             return;
         }
 
-        for (int row = 0; row < VisibleRows && _first + row < _results.Count; row++)
+        for (int row = 0; row < VisibleRows && _list.First + row < _results.Count; row++)
         {
-            int index = _first + row;
+            int index = _list.First + row;
             var entry = _results[index];
             var rect = new Rect(area.x, area.y + row * RowHeight, area.width, RowHeight);
-            bool chosen = index == _selected;
+            bool chosen = index == _list.Selected;
             if (chosen)
             {
                 if (!UiArt.Sliced(rect, "button_highlight", new Color(1f, 1f, 1f, 0.55f)))
@@ -497,7 +468,7 @@ internal sealed class Palette
 
             if (e.type == EventType.MouseDown && rect.Contains(e.mousePosition))
             {
-                _selected = index;
+                _list.Click(index);
                 if (e.clickCount > 1)
                 {
                     Enter(player, shift: false);
