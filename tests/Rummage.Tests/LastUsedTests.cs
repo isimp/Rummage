@@ -263,4 +263,19 @@ public class LastUsedTests
 
         Assert.Equal([Wood, "$item_woodarrow"], Search.Rank("wood", entries, recent.Entries).Select(e => e.Key));
     }
+
+    [Fact]
+    public void SomethingFoundBeforeTheLastFindIsReadBackListedButNoLongerFound()
+    {
+        var recent = new Recent();
+        recent.Found(EntryKind.Item, Wood);
+        recent.Found(EntryKind.Item, Stone);
+
+        var back = Recent.Load(recent.Save());
+
+        Assert.Equal(new[] { Stone, Wood }, back.Entries.Select(e => e.Key));
+        Assert.Equal(EnterDoes.TakeOne, back.Enter(EntryKind.Item, Stone, countTyped: false, shift: false));
+        Assert.Equal(EnterDoes.Find, back.Enter(EntryKind.Item, Wood, countTyped: false, shift: false));
+        Assert.False(back.Entries.Single(e => e.Key == Wood).Taken);
+    }
 }

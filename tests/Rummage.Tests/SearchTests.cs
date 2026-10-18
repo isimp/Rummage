@@ -131,4 +131,18 @@ public class SearchTests
     {
         Assert.Empty(Ranked("zzz"));
     }
+
+    [Fact]
+    public void AWordLaterInTheNameStartingWithTheTextRanksAboveTheTextInsideAWord()
+    {
+        Entry[] entries =
+        [
+            new("$item_a", "Boreal", EntryKind.Item, inChests: 1),
+            new("$item_b", "Score ore", EntryKind.Item, inChests: 1),
+        ];
+
+        var ranked = Search.Rank("ore", entries).Select(e => e.Shown).ToArray();
+
+        Assert.Equal(new[] { "Score ore", "Boreal" }, ranked);
+    }
 }

@@ -122,4 +122,29 @@ public class TopUpTests
 
         Assert.Equal(["Fire arrow: asked another player's chest for 30 Fire arrow", "60 Fire arrow short: the rest once the other chest has answered; press again"], lines);
     }
+
+    [Fact]
+    public void AStackFilledMeanwhileTakesNothingAndIsOutOfRoom()
+    {
+        var held = Stack(Arrows, 23, x: 4, y: 2, maxStack: 100);
+        var bag = Inventory(Stack(Arrows, 100, x: 4, y: 2, maxStack: 100));
+
+        // An item has one stack size wherever it lies, as in the game.
+        var plan = Planner.Make([TopUp(held)], [Chest(1, 5, Stack(Arrows, 100, maxStack: 100), Stack(Arrows, 100, maxStack: 100))], bag, false);
+
+        Assert.Equal(0, plan.Planned(Arrows));
+        Assert.True(plan.For(Arrows).OutOfRoom);
+    }
+
+    [Fact]
+    public void AStackThatLeftItsSlotMeanwhileTakesNothingAndIsOutOfRoom()
+    {
+        var held = Stack(Arrows, 23, x: 4, y: 2, maxStack: 100);
+        var bag = Inventory(Stack(Wood, 10, x: 4, y: 2));
+
+        var plan = Planner.Make([TopUp(held)], [Chest(1, 5, Stack(Arrows, 300, maxStack: 1000))], bag, false);
+
+        Assert.Equal(0, plan.Planned(Arrows));
+        Assert.True(plan.For(Arrows).OutOfRoom);
+    }
 }
