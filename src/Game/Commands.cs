@@ -27,6 +27,6 @@ internal static class Commands
             return;
         }
 
-        args.Context?.AddString($"Usage: /rummage {string.Join(" | ", Words.Keys)}");
+        args.Context.OrNull()?.AddString($"Usage: /rummage {string.Join(" | ", Words.Keys)}");
     }
 }

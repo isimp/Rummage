@@ -66,7 +66,7 @@ internal sealed class Grabber
 
         if (_waiting.Unanswered.Count > 0)
         {
-            Plugin.Log.LogWarning($"{_waiting.Unanswered.Count} take(s) had no answer from the chest's game within {AnswerTimeout} s.");
+            Plugin.Log.LogWarning(System.FormattableString.Invariant($"{_waiting.Unanswered.Count} take(s) had no answer from the chest's game within {AnswerTimeout} s."));
         }
 
         LastArrivals = Report.Arrivals(_arrivals, Text.Shown, Settings.Messages.Value);

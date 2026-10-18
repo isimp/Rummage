@@ -172,7 +172,7 @@ namespace Rummage.Game
                         if (component == null) continue;
                         Gather(component, index);
 
-                        var shared = (component as ItemDrop)?.m_itemData?.m_shared;
+                        var shared = (component as ItemDrop).OrNull()?.m_itemData?.m_shared;
                         if (shared == null) continue;
 
                         Gather(shared, index);

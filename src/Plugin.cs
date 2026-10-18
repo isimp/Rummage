@@ -57,7 +57,7 @@ public sealed class Plugin : BaseUnityPlugin
         Commands.Add("forget", "forgets what the search box last found or took for this character", args =>
         {
             LastUsed.Forget();
-            args.Context?.AddString("Rummage: the search box no longer remembers what it last found or took for this character.");
+            args.Context.OrNull()?.AddString("Rummage: the search box no longer remembers what it last found or took for this character.");
         });
     }
 

@@ -6,7 +6,7 @@ namespace Rummage.Game;
 /// <summary>
 /// Keeps chests lit with the game's own highlight, the glow a piece gets under the cursor while
 /// building. The game's highlight fades after a fifth of a second, so it is given again every
-/// tenth of a second for as long as asked.
+/// tenth of a second for as long as a caller keeps it lit.
 /// </summary>
 internal static class Highlighter
 {

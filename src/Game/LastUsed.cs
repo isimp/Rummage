@@ -83,7 +83,7 @@ internal static class LastUsed
         }
         catch (Exception e)
         {
-            Tell("delete", e);
+            WarnOnce("delete", e);
         }
     }
 
@@ -129,7 +129,7 @@ internal static class LastUsed
         }
         catch (Exception e)
         {
-            Tell("write", e);
+            WarnOnce("write", e);
         }
     }
 
@@ -141,7 +141,7 @@ internal static class LastUsed
         }
         catch (Exception e)
         {
-            Tell("read", e);
+            WarnOnce("read", e);
             return new Recent();
         }
     }
@@ -150,7 +150,7 @@ internal static class LastUsed
 
     private static long PlayerId() => global::Game.instance != null && global::Game.instance.GetPlayerProfile() != null ? global::Game.instance.GetPlayerProfile().GetPlayerID() : 0;
 
-    private static void Tell(string what, Exception e)
+    private static void WarnOnce(string what, Exception e)
     {
         if (!_told)
         {

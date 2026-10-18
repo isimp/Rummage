@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Rummage.SelfTest;
 
-/// <summary>What the self-test found, written to the log as it goes.</summary>
+/// <summary>The checks' results, written to the log as they come.</summary>
 internal sealed class Checks
 {
     private readonly ManualLogSource _log;
@@ -170,7 +170,7 @@ internal sealed class Tests
         }
 
         _checks.Note(Chainloader.PluginInfos.ContainsKey(CraftAmountLink.Guid) ? $"AzuAntiArthriticCrafting's craft amount reads {CraftAmountLink.Current()}" : "AzuAntiArthriticCrafting is not loaded");
-        _checks.Note($"Leave One Item is {(CraftyLink.LeaveOne ? "on" : "off")}, range {CraftyLink.Range} m");
+        _checks.Note(FormattableString.Invariant($"Leave One Item is {(CraftyLink.LeaveOne ? "on" : "off")}, range {CraftyLink.Range} m"));
         foreach (var (type, method) in new[] { (typeof(TextInput), "IsVisible"), (typeof(InventoryGui), "Update"), (typeof(ZInput), "Internal_GetMouseScrollWheel") })
         {
             var info = Harmony.GetPatchInfo(AccessTools.Method(type, method));
@@ -180,7 +180,7 @@ internal sealed class Tests
 
     private IEnumerator HammerPiece()
     {
-        var piece = ZNetScene.instance.GetPrefab("piece_workbench")?.GetComponent<Piece>();
+        var piece = ZNetScene.instance.GetPrefab("piece_workbench").OrNull()?.GetComponent<Piece>();
         var hammer = Site.Make("Hammer", 1);
         _site.Bag.AddItem(hammer);
         _player.EquipItem(hammer, triggerEquipEffects: false);
@@ -210,7 +210,7 @@ internal sealed class Tests
 
         Plugin.Instance.BuildLine.Refresh();
         yield return Frames(5);
-        var shown = Hud.instance && Hud.instance.m_buildHud ? Hud.instance.m_buildHud.transform.Find("Rummage/Text")?.GetComponent<TMPro.TMP_Text>() : null;
+        var shown = Hud.instance && Hud.instance.m_buildHud ? Hud.instance.m_buildHud.transform.Find("Rummage/Text").OrNull()?.GetComponent<TMPro.TMP_Text>() : null;
         string table = shown ? shown.text : "";
         string wood = table.Split('\n').FirstOrDefault(row => row.StartsWith("Wood<pos=", StringComparison.Ordinal)) ?? "";
         _checks.Check(shown && shown.gameObject.activeInHierarchy && table.StartsWith($"<color={Readout.Header}>For 3", StringComparison.Ordinal) && table.Contains(" takes</color>"),
@@ -300,7 +300,7 @@ internal sealed class Tests
             yield break;
         }
 
-        var terminal = (Terminal)global::Console.instance ?? Chat.instance;
+        var terminal = ((Terminal)global::Console.instance).OrNull() ?? Chat.instance;
         void RunNew() => terminal.TryRunCommand("rummage new", silentFail: false, skipAllowedCheck: true);
 
         RunNew();
@@ -530,7 +530,7 @@ internal sealed class Tests
     {
         _site.ClearBag();
         _site.Refill();
-        var piece = ZNetScene.instance.GetPrefab("piece_workbench")?.GetComponent<Piece>();
+        var piece = ZNetScene.instance.GetPrefab("piece_workbench").OrNull()?.GetComponent<Piece>();
         var hammer = Site.Make("Hammer", 1);
         _site.Bag.AddItem(hammer);
         _player.EquipItem(hammer, triggerEquipEffects: false);
@@ -566,7 +566,7 @@ internal sealed class Tests
 
         Plugin.Instance.BuildLine.Refresh();
         yield return Frames(5);
-        var shown = Hud.instance && Hud.instance.m_buildHud ? Hud.instance.m_buildHud.transform.Find("Rummage/Text")?.GetComponent<TMPro.TMP_Text>() : null;
+        var shown = Hud.instance && Hud.instance.m_buildHud ? Hud.instance.m_buildHud.transform.Find("Rummage/Text").OrNull()?.GetComponent<TMPro.TMP_Text>() : null;
         string table = shown ? shown.text : "";
         string row = table.Split('\n').FirstOrDefault(r => r.StartsWith($"{wood}<pos=", StringComparison.Ordinal)) ?? "";
         _checks.Check(table.StartsWith($"<color={Readout.Header}>One more", StringComparison.Ordinal), "the build box is headed One more", shown ? table : "not there");
@@ -712,7 +712,7 @@ internal sealed class Tests
         Settings.KeyAloneOpensSearch.Value = true;
         yield return Frames(4);
 
-        var piece = ZNetScene.instance.GetPrefab("piece_workbench")?.GetComponent<Piece>();
+        var piece = ZNetScene.instance.GetPrefab("piece_workbench").OrNull()?.GetComponent<Piece>();
         var hammer = Site.Make("Hammer", 1);
         _site.Bag.AddItem(hammer);
         _player.EquipItem(hammer, triggerEquipEffects: false);
@@ -887,6 +887,7 @@ internal sealed class Tests
             }
             catch (Exception e)
             {
+                // A part that throws fails, with what it threw, and the run goes on to the next.
                 _checks.Fail("the part ran to its end", $"{e.GetType().Name}: {e.Message}");
                 break;
             }
@@ -995,12 +996,13 @@ internal sealed class Tests
             foreach (var chest in _site.Listed.Where(c => !listed.Contains(c)))
             {
                 var zdo = Scene.View(chest).GetZDO();
-                _checks.Note($"{chest.name} at {Site.Where(chest)}: in its registry {registry?.Contains(chest).ToString() ?? "unknown"}, creator {zdo.GetLong(ZDOVars.s_creator)} / piece {chest.GetComponentInParent<Piece>()?.GetCreator()}, you {_player.GetPlayerID()}, privacy {chest.m_privacy}, ward lets you {PrivateArea.CheckAccess(chest.transform.position, 0f, false, true)}, in use {zdo.GetInt(ZDOVars.s_inUse)}, distance {Vector3.Distance(chest.transform.position, _player.transform.position):F1} m");
+                _checks.Note(FormattableString.Invariant($"{chest.name} at {Site.Where(chest)}: in its registry {registry?.Contains(chest).ToString() ?? "unknown"}, creator {zdo.GetLong(ZDOVars.s_creator)} / piece {chest.GetComponentInParent<Piece>().OrNull()?.GetCreator()}, you {_player.GetPlayerID()}, privacy {chest.m_privacy}, ward lets you {PrivateArea.CheckAccess(chest.transform.position, 0f, false, true)}, in use {zdo.GetInt(ZDOVars.s_inUse)}, distance {Vector3.Distance(chest.transform.position, _player.transform.position):F1} m"));
                 crafty.GetType("AzuCraftyBoxes.API").GetMethod("AddContainer").Invoke(null, [chest]);
             }
         }
         catch (Exception e)
         {
+            // Told in the report as a failure to explain, with what it threw.
             _checks.Fail("explain why the test chests are not listed", $"{e.GetType().Name}: {e.Message}");
         }
     }
@@ -1030,7 +1032,7 @@ internal sealed class Tests
         }
 
         Measure("the shortfall scan", 10, () => Scene.Read(_player).AddBarred(_player));
-        var workbench = ZNetScene.instance.GetPrefab("piece_workbench")?.GetComponent<Piece>();
+        var workbench = ZNetScene.instance.GetPrefab("piece_workbench").OrNull()?.GetComponent<Piece>();
         if (workbench)
         {
             var scene = Scene.Read(_player);
@@ -1045,7 +1047,7 @@ internal sealed class Tests
         var watch = Stopwatch.StartNew();
         Grabber.Grab(_player, Target.ForItem(Site.Wood, "Wood", 5), Time.time);
         watch.Stop();
-        _checks.Note($"a grab of 5 wood from the test chests: {watch.Elapsed.TotalMilliseconds:F2} ms");
+        _checks.Note(FormattableString.Invariant($"a grab of 5 wood from the test chests: {watch.Elapsed.TotalMilliseconds:F2} ms"));
         yield return Idle();
         Conserved(before);
     }
@@ -1069,10 +1071,11 @@ internal sealed class Tests
 
             watch.Stop();
             long made = Math.Max(0, GC.GetTotalMemory(false) - memory);
-            _checks.Note($"{what}: {watch.Elapsed.TotalMilliseconds / times:F2} ms each, about {made / 1024.0 / times:F1} KB made each");
+            _checks.Note(FormattableString.Invariant($"{what}: {watch.Elapsed.TotalMilliseconds / times:F2} ms each, about {made / 1024.0 / times:F1} KB made each"));
         }
         catch (Exception e)
         {
+            // Told in the report as a failure to time it, with what it threw.
             _checks.Fail($"time {what}", $"{e.GetType().Name}: {e.Message}");
         }
     }
@@ -1108,6 +1111,7 @@ internal sealed class Tests
         }
         catch (Exception e)
         {
+            // A step that throws is a check that failed, and the report tells it as one.
             _checks.Fail(what, $"{e.GetType().Name}: {e.Message}");
             return false;
         }
@@ -1134,6 +1138,7 @@ internal sealed class Tests
         }
         catch (Exception e)
         {
+            // Told in the report as a failure of letting go, with what it threw.
             _checks.Fail("let MultiUserChest's held slot go", $"{e.GetType().Name}: {e.Message}");
         }
     }

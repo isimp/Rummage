@@ -21,13 +21,13 @@ public sealed class SelfTestPlugin : BaseUnityPlugin
         {
             if (_running)
             {
-                args.Context?.AddString("The Rummage self-test is already running.");
+                args.Context.OrNull()?.AddString("The Rummage self-test is already running.");
                 return;
             }
 
             if (!Player.m_localPlayer || Player.m_localPlayer.IsDead())
             {
-                args.Context?.AddString("The Rummage self-test runs in a world, with you alive in it.");
+                args.Context.OrNull()?.AddString("The Rummage self-test runs in a world, with you alive in it.");
                 return;
             }
 
