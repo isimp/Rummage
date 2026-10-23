@@ -132,15 +132,20 @@ internal sealed class Grabber
 
         foreach (var chest in touched)
         {
-            Highlighter.Light(chest, 2f);
+            Highlighter.Light(chest, Settings.TakeGlow.Value);
         }
 
+        var tooFar = Finder.FindFar(player, scene, Locate.SoughtFurther(plan));
         if (took.Count > 0 || asked.Count > 0)
         {
             Sound.Play(Sound.Cue.Take);
         }
+        else if (Finder.LastFarLit.Count > 0)
+        {
+            Sound.Play(Sound.Cue.Find);
+        }
 
-        LastLines = Report.Lines(target.Label, plan, new Done(took, asked, changed, refused), Text.Shown, MucLink.Ready, Settings.Messages.Value);
+        LastLines = Report.Lines(target.Label, plan, new Done(took, asked, changed, refused), Text.Shown, MucLink.Ready, Settings.Messages.Value, tooFar);
         Notice.Say(player, LastLines);
     }
 

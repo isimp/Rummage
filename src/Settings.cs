@@ -53,6 +53,12 @@ internal static class Settings
 
     public static ConfigEntry<bool> PlaySounds { get; private set; }
 
+    public static ConfigEntry<float> FindGlow { get; private set; }
+
+    public static ConfigEntry<float> TakeGlow { get; private set; }
+
+    public static ConfigEntry<float> PingSeconds { get; private set; }
+
     public static void Bind(ConfigFile config)
     {
         Key = config.Bind("Keys", "Key", KeyCode.J,
@@ -104,6 +110,14 @@ internal static class Settings
             + "What finding turns up is always told.");
         PlaySounds = config.Bind("Display", "PlaySounds", true,
             "Play a short sound when the search box opens or closes, when Key takes something and when finding lights up chests. Only you hear them, at the game's own sound effects volume.");
+        FindGlow = config.Bind("Display", "FindGlow", 6f,
+            new ConfigDescription("How long, in seconds, chests stay lit after a find in the search box, and the chests too far to take from that a short grab names. "
+                + "0 lights none.", new AcceptableValueRange<float>(0f, 60f)));
+        TakeGlow = config.Bind("Display", "TakeGlow", 2f,
+            new ConfigDescription("How long, in seconds, the chests Key took from stay lit. 0 lights none.", new AcceptableValueRange<float>(0f, 60f)));
+        PingSeconds = config.Bind("Display", "PingSeconds", 6f,
+            new ConfigDescription("How long, in seconds, a ping on the map stays for each chest a find lights. Only you see them, and they are never saved. "
+                + "0 puts no pings up.", new AcceptableValueRange<float>(0f, 60f)));
     }
 
     /// <summary>
@@ -120,6 +134,7 @@ internal static class Settings
         {
             Key, Modifier, SearchKey, KeyAloneOpensSearch, TakeForRecipes, TakeForPieces, PiecePress, TopUpStacks, TopUpAmount,
             ShowItems, ShowPieces, ShowRecipes, RememberLastUsed, FindRadius, Rows, Scale, BuildBox, Messages, PlaySounds,
+            FindGlow, TakeGlow, PingSeconds,
         };
         var saved = new object[entries.Length];
         for (int i = 0; i < entries.Length; i++)

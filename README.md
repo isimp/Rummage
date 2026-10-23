@@ -20,7 +20,7 @@ While building, a box to the right of the game's build panel shows how much of e
 
 ## The search box
 
-The search box lists everything the chests within 50 metres hold, along with every piece and recipe you know. Type part of a name and Tab completes it. Enter alone finds it: the chests that hold it light up, and a message says how many are in each. Put a number in front, as in "40 wood", and Enter takes that many of *Wood*. The *Count* slider and *Take* do the same with the mouse. For a piece or a recipe the number is how many you want to build or craft, and a number that is part of a name stays part of the name.
+The search box lists everything the chests within 50 metres hold, along with every piece and recipe you know. Type part of a name and Tab completes it. Enter alone finds it: the chests that hold it light up and get a short ping on the map, and a message says how many are in each. Put a number in front, as in "40 wood", and Enter takes that many of *Wood*. The *Count* slider and *Take* do the same with the mouse. For a piece or a recipe the number is how many you want to build or craft, and a number that is part of a name stays part of the name.
 
 Shift with the Rummage key over a recipe or piece opens the search box on it, the count already filled in. The search box can also have a key of its own.
 
@@ -34,7 +34,7 @@ Valheim unlocks recipes and pieces once you have carried their materials. When t
 
 Rummage keeps to AzuCraftyBoxes' rules. It takes only from the chests that mod would use, leaves in what its chest rules keep in, and with its `Leave One Item` setting on, leaves one of each item in every chest. Items kept back that way still show in the search, so you can find them. Chests you could not open by hand, such as another player's private chest or one under a ward you have no access to, are never touched.
 
-When something cannot be taken, the message says why: kept back, kept in by chest rules, in a chest someone has open, in a private chest, no room in your inventory, or simply not in the chests nearby.
+When something cannot be taken, the message says why: kept back, kept in by chest rules, in a chest someone has open, in a private chest, no room in your inventory, or simply not in the chests nearby. When chests within 50 metres but too far to take from still hold some, the next line says how many and how far, and those chests light up and get a ping on the map.
 
 In multiplayer, only the game that currently holds a chest can safely change it. With MultiUserChest installed, Rummage asks that game for the items, the same way MultiUserChest handles dragging an item out by hand, and tells you what arrived. Without it, those chests are left alone. Items are never in your inventory and a chest at the same time, so nothing can be doubled.
 
@@ -42,7 +42,7 @@ Rummage runs on your own machine only, and servers do not need it. MultiUserChes
 
 ## Settings
 
-All settings are in `BepInEx/config/isimp.Rummage.cfg`, each with a description. They cover the Rummage key and how the search box opens, what the key takes for, how a press for a piece counts what you carry and how much one press fills a stack, what the search box lists, whether it remembers what you last used, how far it looks and how big it is, when the box beside the build panel shows, how much the messages tell, and its sounds. The chest range and `Leave One Item` are AzuCraftyBoxes' own settings, and a server's values for them apply.
+All settings are in `BepInEx/config/isimp.Rummage.cfg`, each with a description. They cover the Rummage key and how the search box opens, what the key takes for, how a press for a piece counts what you carry and how much one press fills a stack, what the search box lists, whether it remembers what you last used, how far it looks and how big it is, when the box beside the build panel shows, how much the messages tell, how long chests stay lit and pings stay on the map, and its sounds. The chest range and `Leave One Item` are AzuCraftyBoxes' own settings, and a server's values for them apply.
 
 Tested with AzuCraftyBoxes 1.8.27, MultiUserChest 0.6.2, ExtraSlots 1.2.18 and AzuAntiArthriticCrafting 2.1.11.
 

@@ -12,19 +12,27 @@ internal static class Highlighter
 {
     private static readonly Lights<WearNTear> Lit = new(piece => !piece);
 
+    /// <summary>Lights a chest for the seconds given; none lights nothing.</summary>
     public static void Light(Container chest, float seconds)
     {
-        if (!chest)
+        if (!chest || seconds <= 0f)
         {
             return;
         }
 
-        var root = chest.m_rootObjectOverride ? chest.m_rootObjectOverride.gameObject : chest.gameObject;
-        if (root.TryGetComponent(out WearNTear piece))
+        var piece = PieceOf(chest);
+        if (piece)
         {
             Lit.Light(piece, Time.time + seconds);
             piece.Highlight();
         }
+    }
+
+    /// <summary>Whether a chest is lit now, for the self-test.</summary>
+    internal static bool IsLit(Container chest)
+    {
+        var piece = chest ? PieceOf(chest) : null;
+        return piece && Lit.IsLit(piece, Time.time);
     }
 
     public static void Tick(float now)
@@ -33,5 +41,11 @@ internal static class Highlighter
         {
             piece.Highlight();
         }
+    }
+
+    private static WearNTear PieceOf(Container chest)
+    {
+        var root = chest.m_rootObjectOverride ? chest.m_rootObjectOverride.gameObject : chest.gameObject;
+        return root.TryGetComponent(out WearNTear piece) ? piece : null;
     }
 }

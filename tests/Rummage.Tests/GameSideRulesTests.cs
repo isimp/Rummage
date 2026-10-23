@@ -60,6 +60,20 @@ public class LightsTests
     }
 
     [Fact]
+    public void APieceIsLitUntilItsTimeIsUpAndNotOnceItIsGone()
+    {
+        var lights = Lights();
+        var chest = new Piece();
+        lights.Light(chest, until: 12f);
+
+        Assert.True(lights.IsLit(chest, 11.9f));
+        Assert.False(lights.IsLit(chest, 12f));
+        Assert.False(lights.IsLit(new Piece(), 11f));
+        chest.Destroyed = true;
+        Assert.False(lights.IsLit(chest, 11f));
+    }
+
+    [Fact]
     public void WithNothingLitThereIsNothingToDo()
     {
         Assert.Empty(Lights().Due(10f));

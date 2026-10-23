@@ -191,4 +191,45 @@ public class ReportTests
 
         Assert.Equal(["5 Wood arrived"], lines);
     }
+
+    [Fact]
+    public void ChestsTooFarToTakeFromAreToldAfterWhatIsShort()
+    {
+        var plan = Plan(Inventory(), false, [Bring(Wood, 10)], Chest(1, 5, Stack(Wood, 4)));
+        string far = "Wood: 200 in 1 chest, nearest 31 m, too far to take";
+
+        var lines = Report.Lines("Workbench", plan, Took(plan), Shown, true, Messages.Full, [far]);
+
+        Assert.Equal(["Workbench: took 4 Wood", "6 Wood short: not in chests nearby", far], lines);
+    }
+
+    [Fact]
+    public void ShortMessagesStillTellOfChestsTooFarToTakeFrom()
+    {
+        var plan = Plan(Inventory(), false, [Bring(Wood, 10)]);
+        string far = "Wood: 200 in 1 chest, nearest 31 m, too far to take";
+
+        var lines = Report.Lines("Workbench", plan, Took(plan), Shown, true, Messages.Short, [far]);
+
+        Assert.Equal(["Workbench: took nothing", "Short: 10 Wood", far], lines);
+    }
+
+    [Fact]
+    public void WithMessagesOffChestsTooFarToTakeFromAreNotTold()
+    {
+        var plan = Plan(Inventory(), false, [Bring(Wood, 10)]);
+
+        Assert.Empty(Report.Lines("Workbench", plan, Took(plan), Shown, true, Messages.Off, ["Wood: 200 in 1 chest, nearest 31 m, too far to take"]));
+    }
+
+    private static Done Took(Plan plan)
+    {
+        var took = new Dictionary<string, int>();
+        foreach (var move in plan.Moves)
+        {
+            took[move.Name] = took.GetValueOrDefault(move.Name) + move.Amount;
+        }
+
+        return new Done(took, new Dictionary<string, int>(), changed: 0, refused: 0);
+    }
 }

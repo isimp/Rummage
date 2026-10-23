@@ -51,4 +51,50 @@ public class LocateTests
     {
         Assert.Equal(["Wood: 5 in 1 chest, nearest 9 m"], Locate.Lines([Part(Wood, (2f, 0), (9f, 5))], 50f, Shown));
     }
+
+    [Fact]
+    public void AShortItemInAChestPastTheTakingRangeIsNamedAsTooFarToTake()
+    {
+        var lines = Locate.TooFar([Part(Wood, (31.2f, 200))], range: 20f, Shown);
+
+        Assert.Equal(["Wood: 200 in 1 chest, nearest 31 m, too far to take"], lines);
+    }
+
+    [Fact]
+    public void ChestsWithinTheTakingRangeAreNotCountedAsTooFar()
+    {
+        var lines = Locate.TooFar([Part(Wood, (5f, 30), (31f, 200), (44f, 10))], range: 20f, Shown);
+
+        Assert.Equal(["Wood: 210 in 2 chests, nearest 31 m, too far to take"], lines);
+    }
+
+    [Fact]
+    public void NothingIsSaidOfAShortItemNoChestFurtherAwayHolds()
+    {
+        var lines = Locate.TooFar([Part(Wood, (31f, 200)), Part(Nails, (5f, 3), (40f, 0))], range: 20f, Shown);
+
+        Assert.Equal(["Wood: 200 in 1 chest, nearest 31 m, too far to take"], lines);
+    }
+
+    [Fact]
+    public void WhatIsShortIsLookedForFurtherAway()
+    {
+        var plan = Plan(Inventory(), false, [Bring(Wood, 10), Bring(Stone, 4)], Chest(1, 5, Stack(Wood, 50)));
+
+        Assert.Equal([Stone], Locate.SoughtFurther(plan));
+    }
+
+    [Fact]
+    public void WhatIsShortForWantOfRoomIsNotLookedForFurtherAway()
+    {
+        var plan = Plan(Inventory(1, 1, Stack(Wood, 45)), false, [Bring(Wood, 10)], Chest(1, 5, Stack(Wood, 50)));
+
+        Assert.Empty(Locate.SoughtFurther(plan));
+    }
+
+    [Fact]
+    public void APingIsNamedByWhatTheChestHoldsOfWhatWasLookedFor()
+    {
+        Assert.Equal("Wood 120 · Stone 40", Locate.PinName([(Wood, 120), (Nails, 0), (Stone, 40)], Shown));
+    }
 }

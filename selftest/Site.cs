@@ -51,6 +51,9 @@ internal sealed class Site
     /// <summary>Someone else's private chest with resin and wood, which AzuCraftyBoxes does not list.</summary>
     public Container Foreign { get; private set; }
 
+    /// <summary>A chest of the wood kind with stone only, past the range a grab takes from; there only while a part needs it.</summary>
+    public Container Far { get; private set; }
+
     /// <summary>A player id nobody has, for chests that are someone else's.</summary>
     public const long Nobody = 0x5EED_0000_0001L;
 
@@ -58,7 +61,7 @@ internal sealed class Site
     public IEnumerable<Container> Listed => new[] { Main, Second, Private }.Where(c => c);
 
     /// <summary>Every test chest; what the test counts as made or lost is counted over these.</summary>
-    public IEnumerable<Container> Sources => new[] { Main, Second, Private, Foreign }.Where(c => c);
+    public IEnumerable<Container> Sources => new[] { Main, Second, Private, Foreign, Far }.Where(c => c);
 
     public Inventory Bag => _player.GetInventory();
 
@@ -82,6 +85,29 @@ internal sealed class Site
         Fill(Second, (Wood, 50));
         Fill(Private, (Resin, 20), (Wood, 10));
         Fill(Foreign, (Resin, 20), (Wood, 10));
+        if (Far)
+        {
+            Fill(Far, (Stone, 40));
+        }
+    }
+
+    /// <summary>Builds <see cref="Far"/> the distance given in front of the player and fills it.</summary>
+    public void BuildFar(float distance)
+    {
+        Far = Place("piece_chest_wood", ahead: distance);
+        Fill(Far, (Stone, 40));
+    }
+
+    /// <summary>Empties <see cref="Far"/> and takes it down.</summary>
+    public void TakeDownFar()
+    {
+        if (Far)
+        {
+            Far.GetInventory().RemoveAll();
+            TakeDown(Far);
+        }
+
+        Far = null;
     }
 
     /// <summary>Takes everything the test put into the inventory back out, and kept stacks back to their size.</summary>
@@ -270,15 +296,23 @@ internal sealed class Site
         return (_vaults[_vaults.Count - 1], 0, 0);
     }
 
-    /// <summary>Builds a chest a few steps in front of the player, on what is underfoot, as the player's own.</summary>
-    private Container Place(string prefab, long creator = 0)
+    /// <summary>
+    /// Builds a chest a few steps in front of the player, or the distance given ahead, on what is
+    /// underfoot, as the player's own.
+    /// </summary>
+    private Container Place(string prefab, long creator = 0, float ahead = 0f)
     {
         var forward = _player.transform.forward;
         forward.y = 0f;
         forward = forward.sqrMagnitude > 0.01f ? forward.normalized : Vector3.forward;
         var right = Vector3.Cross(Vector3.up, forward);
-        var at = _player.transform.position + forward * 3f + right * ((_placed % 6) - 2.5f) * 1.6f + forward * (_placed / 6) * 1.6f;
-        _placed++;
+        var at = ahead > 0f
+            ? _player.transform.position + forward * ahead
+            : _player.transform.position + forward * 3f + right * ((_placed % 6) - 2.5f) * 1.6f + forward * (_placed / 6) * 1.6f;
+        if (ahead <= 0f)
+        {
+            _placed++;
+        }
 
         if (ZoneSystem.instance.GetSolidHeight(at, out float floor, heightMargin: 2))
         {

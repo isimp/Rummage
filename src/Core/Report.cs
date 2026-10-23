@@ -59,7 +59,9 @@ internal static class Report
     /// <param name="shown">The item's name as the player reads it.</param>
     /// <param name="canRoute">Whether MultiUserChest is there to reach chests other players' games hold.</param>
     /// <param name="messages">How much to tell: <see cref="Messages.Short"/> names what is short without the reasons.</param>
-    public static IReadOnlyList<string> Lines(string label, Plan plan, Done done, Func<string, string> shown, bool canRoute, Messages messages = Messages.Full)
+    /// <param name="tooFar">What chests past the range taken from hold of what is short (<see cref="Locate.TooFar"/>), told after the shortfalls.</param>
+    public static IReadOnlyList<string> Lines(string label, Plan plan, Done done, Func<string, string> shown, bool canRoute, Messages messages = Messages.Full,
+        IReadOnlyList<string> tooFar = null)
     {
         var lines = new List<string>();
         if (messages == Messages.Off)
@@ -95,6 +97,11 @@ internal static class Report
             {
                 lines.Add($"{Count(outcome.Short, shown(outcome.Name))} short: {string.Join("; ", Reasons(outcome, canRoute))}");
             }
+        }
+
+        if (tooFar != null)
+        {
+            lines.AddRange(tooFar);
         }
 
         if (done.Changed > 0)

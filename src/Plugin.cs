@@ -76,6 +76,7 @@ public sealed class Plugin : BaseUnityPlugin
         Sound.Prepare();
         _grabber.Tick(Time.time);
         Highlighter.Tick(Time.time);
+        Pinger.Tick(Time.time);
         _readout.Tick(Player.m_localPlayer, Time.time, Settings.Key.Value.ToString(), Settings.TakeForPieces.Value ? Settings.BuildBox.Value : Core.BuildBox.Never);
         bool drawing = Palette.IsOpen || (!Skin.Warmed && Player.m_localPlayer);
         if (_view.enabled != drawing)

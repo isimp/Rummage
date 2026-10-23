@@ -139,6 +139,7 @@ internal sealed class Tests
             yield return Part("a recipe in the crafting tab, pressed twice", Recipe());
             yield return Part("filling a stack", TopUp());
             yield return Part("the search box", SearchBox());
+            yield return Part("a chest too far to take from", TooFar());
             yield return Part("a build piece with PiecePress FullSet", FullSetPiece());
             yield return Part("what the search box last found or took", LastUsedRows());
             yield return Part("new items", NewToYou());
@@ -484,6 +485,12 @@ internal sealed class Tests
         _checks.Check(found.Contains("Wood: 110 in 3 chests"), "it finds the wood in the three test chests that may be used", found);
         _checks.Check(!Finder.LastLit.Contains(_site.Foreign), "someone else's private chest is not shown");
         _checks.Check(Finder.LastLit.Count == 3, "the three chests light up", Finder.LastLit.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        _checks.Check(Finder.LastLit.All(Highlighter.IsLit), "and are lit now");
+        _checks.Check(Pinger.LastPinged.Count == 3 && Finder.LastLit.All(c => OnMap(Pinger.PinOf(c))), "each lit chest has a ping on the map",
+            $"{Pinger.LastPinged.Count} pinged");
+        var mainPin = Pinger.PinOf(_site.Main);
+        _checks.Check(mainPin != null && mainPin.m_name == $"{Text.Shown(Site.Wood)} 50" && !mainPin.m_save && mainPin.m_type == Minimap.PinType.Ping,
+            "a ping is the game's ping, named by what the chest holds of what was looked for, and is never saved", mainPin == null ? "no pin" : $"{mainPin.m_name}, save {mainPin.m_save}");
 
         palette.Open(_player, null);
         var numbered = Catalog.Build(_player, Scene.Read(_player)).Entries
@@ -526,6 +533,99 @@ internal sealed class Tests
     /// holds enough already, the build box shows what is carried as a plain number, UntilCarried
     /// still hides it while one can be built, and a count typed in the search box brings whole sets.
     /// </summary>
+    private IEnumerator TooFar()
+    {
+        if (!CraftyLink.HasRegistry)
+        {
+            _checks.Skip("AzuCraftyBoxes' registry was not found, so nothing past its range is looked in");
+            yield break;
+        }
+
+        float ahead = CraftyLink.Range + 10f;
+        if (ahead + 5f > Finder.Radius)
+        {
+            _checks.Skip($"FindRadius {Finder.Radius.ToString(System.Globalization.CultureInfo.InvariantCulture)} m reaches hardly past the {CraftyLink.Range.ToString(System.Globalization.CultureInfo.InvariantCulture)} m taken from");
+            yield break;
+        }
+
+        Guarded("building a chest too far to take from", () => _site.BuildFar(ahead));
+        var far = _site.Far;
+        bool Registered() => far && CraftyLink.Registered(_player.transform.position, Finder.Radius).Contains(far);
+        yield return Until(Registered, 6f);
+        float distance = far ? Vector3.Distance(_player.transform.position, far.transform.position) : 0f;
+        if (!Registered() || distance <= CraftyLink.Range || distance > Finder.Radius)
+        {
+            _checks.Skip($"the chest built {ahead.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} m ahead is not listed between the range taken from and FindRadius "
+                + $"({(far ? distance.ToString("F0", System.Globalization.CultureInfo.InvariantCulture) + " m" : "not built")})");
+            _site.TakeDownFar();
+            yield break;
+        }
+
+        string stone = Text.Shown(Site.Stone);
+        var tooMuch = Target.ForItem(Site.Stone, stone, 60);
+        IEnumerator Again(Target target)
+        {
+            _site.ClearBag();
+            _site.Refill();
+            return Grab(target);
+        }
+
+        // The find before this part may still light the chest taken from.
+        yield return Until(() => !Highlighter.IsLit(_site.Main), 7f);
+        Settings.FindGlow.Value = 1f;
+        Settings.TakeGlow.Value = 1f;
+        Settings.PingSeconds.Value = 1f;
+        yield return Grab(tooMuch);
+        var pin = Pinger.PinOf(far);
+        _checks.Check(Highlighter.IsLit(far) && OnMap(pin) && Highlighter.IsLit(_site.Main), "with a second for each, the far chest is lit and pinged and the chest taken from lit");
+        yield return Until(() => false, 1.3f);
+        _checks.Check(!Highlighter.IsLit(far) && !OnMap(pin) && !Highlighter.IsLit(_site.Main), "a second later the glows are out and the ping is off the map");
+
+        Settings.FindGlow.Value = 0f;
+        Settings.TakeGlow.Value = 0f;
+        Settings.PingSeconds.Value = 0f;
+        yield return Again(tooMuch);
+        _checks.Check(!Highlighter.IsLit(far) && Pinger.PinOf(far) == null && !Highlighter.IsLit(_site.Main), "at 0 nothing is lit or pinged");
+        _checks.Check(Grabber.LastLines.Any(l => l.EndsWith("too far to take", StringComparison.Ordinal)), "and the far chest is still told", string.Join(" | ", Grabber.LastLines));
+
+        Settings.FindGlow.Value = (float)Settings.FindGlow.DefaultValue;
+        Settings.TakeGlow.Value = (float)Settings.TakeGlow.DefaultValue;
+        Settings.PingSeconds.Value = (float)Settings.PingSeconds.DefaultValue;
+        yield return Again(tooMuch);
+        var lines = Grabber.LastLines.ToList();
+        string told = string.Join(" | ", lines);
+        int shortAt = lines.FindIndex(l => l.Contains($"{stone} short: "));
+        int farAt = lines.FindIndex(l => l.StartsWith($"{stone}: 40 in 1 chest, nearest ", StringComparison.Ordinal) && l.EndsWith(", too far to take", StringComparison.Ordinal));
+        _checks.Check(shortAt >= 0 && farAt > shortAt, "a short grab names the chest too far to take from after what is short", told);
+        _checks.Check(Site.Count(far.GetInventory(), Site.Stone) == 40, "nothing is taken from it", Site.Count(far.GetInventory(), Site.Stone).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        _checks.Check(Finder.LastFarLit.Count == 1 && Finder.LastFarLit[0] == far && Highlighter.IsLit(far), "it lights up");
+        pin = Pinger.PinOf(far);
+        _checks.Check(OnMap(pin) && pin.m_name == $"{stone} 40" && Pinger.LastPinged.Count == 1, "it alone gets a ping, named by the stone it holds", pin == null ? "no pin" : pin.m_name);
+        _checks.Check(Highlighter.IsLit(_site.Main), "the chest taken from lights up as well");
+
+        yield return Again(Target.ForItem(Site.Stone, stone, 5));
+        _checks.Check(Finder.LastFarLit.Count == 0 && !Grabber.LastLines.Any(l => l.EndsWith("too far to take", StringComparison.Ordinal)),
+            "a grab short of nothing looks no further", string.Join(" | ", Grabber.LastLines));
+
+        Settings.Messages.Value = Messages.Short;
+        yield return Again(tooMuch);
+        told = string.Join(" | ", Grabber.LastLines);
+        _checks.Check(told.Contains("Short: ") && told.Contains("too far to take"), "with Messages Short the far chest is still told", told);
+        Settings.Messages.Value = Messages.Off;
+        yield return Again(tooMuch);
+        _checks.Check(Grabber.LastLines.Count == 0 && Finder.LastFarLit.Count == 1 && OnMap(Pinger.PinOf(far)), "with Messages Off nothing is told, but it still lights up and gets a ping",
+            string.Join(" | ", Grabber.LastLines));
+        Settings.Messages.Value = Messages.Full;
+
+        _site.ClearBag();
+        _site.TakeDownFar();
+    }
+
+    private static readonly AccessTools.FieldRef<Minimap, List<Minimap.PinData>> PinsOf = AccessTools.FieldRefAccess<Minimap, List<Minimap.PinData>>("m_pins");
+
+    /// <summary>Whether a pin is on the map now.</summary>
+    private static bool OnMap(Minimap.PinData pin) => pin != null && Minimap.instance && PinsOf(Minimap.instance).Contains(pin);
+
     private IEnumerator FullSetPiece()
     {
         _site.ClearBag();

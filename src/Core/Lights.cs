@@ -33,6 +33,9 @@ internal sealed class Lights<TPiece> where TPiece : class
         _until[piece] = _until.TryGetValue(piece, out float was) ? Math.Max(was, until) : until;
     }
 
+    /// <summary>Whether a piece is lit at <paramref name="now"/>.</summary>
+    public bool IsLit(TPiece piece, float now) => _until.TryGetValue(piece, out float until) && now < until && !_gone(piece);
+
     /// <summary>
     /// The pieces to light again now, every tenth of a second; none between. A piece whose time
     /// is up or that is gone is no longer lit. The list is reused by the next call.

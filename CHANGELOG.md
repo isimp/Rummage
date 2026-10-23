@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1
+
+When a grab is short of something that chests further away still hold, within the search box's 50 metres but past the range Rummage takes from, a line after the shortfall says how many are there, in how many chests and how far the nearest is, and those chests light up.
+
+Chests a find lights up get a short ping on the map, with the game's own ping icon, named on the large map by what they hold. The pings are yours alone, are never saved and go away after a few seconds.
+
+`FindGlow`, `TakeGlow` and `PingSeconds` set how long chests stay lit after a find and after a grab, and how long the pings stay. 0 turns each off.
+
 ## 0.3.0
 
 `PiecePress` decides how a press for a build piece counts what you carry. `TopUp`, the default, works as before. With `FullSet` every press takes the piece's whole cost whatever you carry, so presses for different pieces add up, and a count typed in the search box for a piece brings that many whole sets. Recipes still count what you carry.
