@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using BepInEx.Bootstrap;
 using BepInEx.Configuration;
+using Rummage.Core;
 using UnityEngine;
 
 namespace Rummage.Game;
@@ -28,6 +29,8 @@ internal static class CraftyLink
     private static MethodInfo _nearby;
     private static MethodInfo _canPull;
     private static HashSet<Container> _registry;
+    private static HashSet<Container> _adding;
+    private static HashSet<Container> _dropping;
     private static ConfigEntryBase _leaveOne;
     private static ConfigEntryBase _range;
 
@@ -58,8 +61,11 @@ internal static class CraftyLink
             _nearby = api.GetMethod("GetNearbyContainers", BindingFlags.Public | BindingFlags.Static)
                 .MakeGenericMethod(typeof(Player));
             _canPull = api.GetMethod("CanItemBePulled", BindingFlags.Public | BindingFlags.Static, null, [typeof(string), typeof(string)], null);
-            _registry = info.Instance.GetType().Assembly.GetType("AzuCraftyBoxes.Util.Functions.Boxes")?
-                .GetField("Containers", BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null) as HashSet<Container>;
+            var boxes = info.Instance.GetType().Assembly.GetType("AzuCraftyBoxes.Util.Functions.Boxes");
+            _registry = boxes?.GetField("Containers", BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null) as HashSet<Container>;
+            // Where it holds the chests it took up or dropped until it merges them; versions without them merge at once.
+            _adding = boxes?.GetField("ContainersToAdd", BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null) as HashSet<Container>;
+            _dropping = boxes?.GetField("ContainersToRemove", BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null) as HashSet<Container>;
 
             var config = info.Instance.Config;
             _leaveOne = Entry(config, "Leave One Item");
@@ -128,7 +134,8 @@ internal static class CraftyLink
 
     /// <summary>
     /// Every chest AzuCraftyBoxes has registered within range, whether or not it lets the player
-    /// use it now, read only; empty when the registry cannot be read.
+    /// use it now, read only; empty when the registry cannot be read. Chests it took up or dropped
+    /// since it last looked for chests itself count as it will count them.
     /// </summary>
     public static IEnumerable<Container> Registered(Vector3 here, float range)
     {
@@ -138,7 +145,9 @@ internal static class CraftyLink
         }
 
         float reach = range * range;
-        foreach (var chest in new List<Container>(_registry))
+        var registered = ChestRules.Registered(new List<Container>(_registry),
+            _adding == null ? [] : new List<Container>(_adding), _dropping == null ? [] : new List<Container>(_dropping));
+        foreach (var chest in registered)
         {
             if (chest && (chest.transform.position - here).sqrMagnitude <= reach)
             {

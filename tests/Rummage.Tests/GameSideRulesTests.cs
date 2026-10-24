@@ -185,6 +185,32 @@ public class ChestRulesTests
         Assert.True(ChestRules.Counted(itemWorldLevel: 3, worldLevel: 2));
         Assert.False(ChestRules.Counted(itemWorldLevel: 1, worldLevel: 2));
     }
+
+    [Fact]
+    public void AChestAzuCraftyBoxesHasTakenUpButNotYetMergedIsAmongItsChests()
+    {
+        var listed = new Piece();
+        var built = new Piece();
+
+        Assert.Equal(new[] { listed, built }, ChestRules.Registered([listed], adding: [built], dropping: []));
+    }
+
+    [Fact]
+    public void AChestAzuCraftyBoxesIsAboutToDropIsNoLongerAmongItsChests()
+    {
+        var kept = new Piece();
+        var gone = new Piece();
+
+        Assert.Equal(new[] { kept }, ChestRules.Registered([kept, gone], adding: [], dropping: [gone]));
+    }
+
+    [Fact]
+    public void AChestTakenUpTwiceIsAmongItsChestsOnce()
+    {
+        var chest = new Piece();
+
+        Assert.Equal(new[] { chest }, ChestRules.Registered([chest], adding: [chest], dropping: []));
+    }
 }
 
 /// <summary>

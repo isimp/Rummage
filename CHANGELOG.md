@@ -6,6 +6,8 @@ When a grab is short of something that chests further away still hold, within th
 
 Chests a find lights up get a short ping on the map, with the game's own ping icon, named on the large map by what they hold. The pings are yours alone, are never saved and go away after a few seconds.
 
+Finding and the search box also see a chest built or loaded a moment ago, before AzuCraftyBoxes has looked for chests again.
+
 `FindGlow`, `TakeGlow` and `PingSeconds` set how long chests stay lit after a find and after a grab, and how long the pings stay. 0 turns each off.
 
 ## 0.3.0

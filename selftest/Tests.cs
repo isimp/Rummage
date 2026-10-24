@@ -551,7 +551,9 @@ internal sealed class Tests
         Guarded("building a chest too far to take from", () => _site.BuildFar(ahead));
         var far = _site.Far;
         bool Registered() => far && CraftyLink.Registered(_player.transform.position, Finder.Radius).Contains(far);
+        // Nothing here asks AzuCraftyBoxes for chests, so it has not merged the new chest into its registry yet.
         yield return Until(Registered, 6f);
+        _checks.Check(Registered(), "a chest just built is among AzuCraftyBoxes' chests before it has merged it");
         float distance = far ? Vector3.Distance(_player.transform.position, far.transform.position) : 0f;
         if (!Registered() || distance <= CraftyLink.Range || distance > Finder.Radius)
         {

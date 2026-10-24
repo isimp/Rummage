@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+
 namespace Rummage.Core;
 
 /// <summary>A chest's privacy setting, as far as it decides who may open it.</summary>
@@ -33,6 +36,17 @@ internal static class ChestRules
             ChestPrivacy.Private => playerBuiltIt,
             _ => false,
         };
+    }
+
+    /// <summary>
+    /// The chests AzuCraftyBoxes counts as its own now. It takes a chest up, or drops it, into a
+    /// list of its own first and merges that list into its registry only when it next looks for
+    /// chests itself, so a chest built or loaded since then is among the ones being added.
+    /// </summary>
+    public static IEnumerable<T> Registered<T>(IEnumerable<T> listed, IEnumerable<T> adding, IEnumerable<T> dropping)
+    {
+        var dropped = new HashSet<T>(dropping);
+        return listed.Concat(adding).Distinct().Where(chest => !dropped.Contains(chest));
     }
 
     /// <summary>Why a chest in reach that may not be used is barred: in use, someone else's private chest, or kept out otherwise.</summary>
